@@ -16,25 +16,23 @@ export default async function AlmacenPage(props: Props) {
   const role = await getCurrentUserRole();
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 p-6 md:p-10">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
-          <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Control Operativo - Almacén</h1>
-            <p className="text-slate-500 mt-2 text-lg">Gestión dinámica de inventario y materiales</p>
-          </div>
-        </header>
+    <div className="w-full space-y-8">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[var(--border)] pb-6">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight">Control Operativo - Almacén</h1>
+          <p className="mt-2 text-lg" style={{ color: 'var(--text-muted)' }}>Gestión dinámica de inventario y materiales</p>
+        </div>
+      </header>
 
-        <main>
-          <AlmacenClient 
-            products={products} 
-            categories={categories} 
-            currentCategory={category} 
-            projects={activeProjects}
-            role={role || 'TECNICO'}
-          />
-        </main>
-      </div>
+      <main>
+        <AlmacenClient 
+          products={products} 
+          categories={categories} 
+          currentCategory={category} 
+          projects={activeProjects}
+          role={role || 'TECNICO'}
+        />
+      </main>
     </div>
   )
 }

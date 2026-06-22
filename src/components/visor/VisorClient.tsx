@@ -64,7 +64,7 @@ export default function VisorClient({ initialProjects }: { initialProjects: Proj
               <AlertTriangle className="w-8 h-8" />
               Proyectos Atorados ({atoradoProjects.length})
             </h2>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(400px,1fr))] gap-6">
               {atoradoProjects.map(project => (
                 <div key={project.id} className="bg-rose-950/40 border-2 border-rose-600/50 rounded-2xl p-8 relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-2 h-full bg-rose-600 animate-pulse"></div>
@@ -97,7 +97,7 @@ export default function VisorClient({ initialProjects }: { initialProjects: Proj
               <p className="text-2xl text-slate-500 font-medium">No hay proyectos activos.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(350px,1fr))] gap-6">
               {activeProjects.map(project => {
                 const isRisk = project.status === 'RIESGO';
                 
