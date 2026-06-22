@@ -78,6 +78,7 @@ model Product {
   id          String   @id @default(uuid())
   sku         String   @unique
   name        String
+  category    String
   minStock    Int      @default(5)
   inventory   Inventory[]
 }
