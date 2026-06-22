@@ -66,8 +66,8 @@ export default function UploadDocumentModal({
       setName('');
       setNotes('');
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Error al subir el documento');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al subir el documento');
     } finally {
       setLoading(false);
     }

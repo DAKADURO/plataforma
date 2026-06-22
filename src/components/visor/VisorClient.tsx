@@ -4,8 +4,17 @@ import { useEffect, useState } from 'react';
 import { getProjects } from '@/app/actions/projects';
 import { AlertTriangle, Clock, Activity, CheckCircle2 } from 'lucide-react';
 
-export default function VisorClient({ initialProjects }: { initialProjects: any[] }) {
-  const [projects, setProjects] = useState(initialProjects);
+type ProjectWithClient = {
+  id: string;
+  name: string;
+  status: string;
+  progress: number;
+  blockReason: string | null;
+  client: { name: string };
+};
+
+export default function VisorClient({ initialProjects }: { initialProjects: ProjectWithClient[] }) {
+  const [projects, setProjects] = useState<ProjectWithClient[]>(initialProjects);
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
   // Auto-refresh every 30 seconds
@@ -91,7 +100,6 @@ export default function VisorClient({ initialProjects }: { initialProjects: any[
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {activeProjects.map(project => {
                 const isRisk = project.status === 'RIESGO';
-                const colorBase = isRisk ? 'amber' : 'emerald';
                 
                 return (
                   <div key={project.id} className={`bg-slate-900/80 border-2 rounded-2xl p-8 flex flex-col justify-between ${isRisk ? 'border-amber-500/30' : 'border-slate-800'}`}>

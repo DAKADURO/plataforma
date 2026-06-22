@@ -4,6 +4,11 @@ import { useState } from 'react';
 import { createMovement } from '@/app/actions/almacen';
 import { X } from 'lucide-react';
 
+type ProjectOption = {
+  id: string;
+  name: string;
+};
+
 export default function MovementModal({ 
   isOpen, 
   onClose,
@@ -13,7 +18,7 @@ export default function MovementModal({
   isOpen: boolean; 
   onClose: () => void;
   products: { id: string, name: string, sku: string, stock: number }[];
-  projects: any[];
+  projects: ProjectOption[];
 }) {
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState<number | ''>(1);

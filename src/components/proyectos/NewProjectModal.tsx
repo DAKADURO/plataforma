@@ -4,7 +4,12 @@ import { useState } from 'react';
 import { createProject } from '@/app/actions/projects';
 import { X } from 'lucide-react';
 
-export default function NewProjectModal({ isOpen, onClose, clients }: { isOpen: boolean; onClose: () => void; clients: any[] }) {
+type ClientOption = {
+  id: string;
+  name: string;
+};
+
+export default function NewProjectModal({ isOpen, onClose, clients }: { isOpen: boolean; onClose: () => void; clients: ClientOption[] }) {
   const [name, setName] = useState('');
   const [clientId, setClientId] = useState('');
   const [loading, setLoading] = useState(false);

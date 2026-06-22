@@ -15,6 +15,11 @@ type Product = {
   stock: number;
 };
 
+type ProjectOption = {
+  id: string;
+  name: string;
+};
+
 export default function AlmacenClient({
   products,
   categories,
@@ -24,7 +29,7 @@ export default function AlmacenClient({
   products: Product[];
   categories: string[];
   currentCategory: string;
-  projects: any[];
+  projects: ProjectOption[];
 }) {
   const router = useRouter();
   const [isProductModalOpen, setProductModalOpen] = useState(false);

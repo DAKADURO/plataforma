@@ -54,7 +54,8 @@ export async function addDocumentVersion(data: {
 
     revalidatePath(`/proyectos/${data.projectId}`)
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Error desconocido'
+    return { success: false, error: message }
   }
 }

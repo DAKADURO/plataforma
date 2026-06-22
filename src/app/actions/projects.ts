@@ -43,8 +43,9 @@ export async function createClient(data: { name: string; contact?: string }) {
     await prisma.client.create({ data })
     revalidatePath('/proyectos')
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Error desconocido'
+    return { success: false, error: message }
   }
 }
 
@@ -53,8 +54,9 @@ export async function createProject(data: { name: string; clientId: string }) {
     await prisma.project.create({ data })
     revalidatePath('/proyectos')
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Error desconocido'
+    return { success: false, error: message }
   }
 }
 
@@ -71,7 +73,8 @@ export async function updateProjectStatus(data: { id: string, progress: number, 
     revalidatePath('/proyectos')
     revalidatePath(`/proyectos/${data.id}`)
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Error desconocido'
+    return { success: false, error: message }
   }
 }

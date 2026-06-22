@@ -14,7 +14,12 @@ type Project = {
   client: { name: string };
 };
 
-export default function KanbanBoard({ projects, clients }: { projects: Project[], clients: any[] }) {
+type ClientOption = {
+  id: string;
+  name: string;
+};
+
+export default function KanbanBoard({ projects, clients }: { projects: Project[], clients: ClientOption[] }) {
   const [isClientModalOpen, setClientModalOpen] = useState(false);
   const [isProjectModalOpen, setProjectModalOpen] = useState(false);
 

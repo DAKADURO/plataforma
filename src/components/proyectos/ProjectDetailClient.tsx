@@ -4,11 +4,44 @@ import React, { useState } from 'react';
 import { updateProjectStatus } from '@/app/actions/projects';
 import { ArrowLeft, CheckCircle2, AlertTriangle, XCircle, Users, Package, FileText, UploadCloud, ChevronDown, ChevronRight, Download, Clock } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import UploadDocumentModal from './UploadDocumentModal';
 
-export default function ProjectDetailClient({ project }: { project: any }) {
-  const router = useRouter();
+// ---- Types derived from Prisma shape ----
+type DocumentVersion = {
+  id: string;
+  version: number;
+  url: string;
+  notes: string | null;
+  uploadedBy: string;
+  createdAt: Date;
+};
+
+type ProjectDocument = {
+  id: string;
+  name: string;
+  type: string;
+  versions: DocumentVersion[];
+};
+
+type InventoryItem = {
+  id: string;
+  quantity: number;
+  date: Date;
+  product: { name: string };
+};
+
+type Project = {
+  id: string;
+  name: string;
+  progress: number;
+  status: string;
+  blockReason: string | null;
+  client: { name: string };
+  inventory: InventoryItem[];
+  documents: ProjectDocument[];
+};
+
+export default function ProjectDetailClient({ project }: { project: Project }) {
   const [progress, setProgress] = useState(project.progress);
   const [status, setStatus] = useState(project.status);
   const [blockReason, setBlockReason] = useState(project.blockReason || '');
@@ -76,7 +109,7 @@ export default function ProjectDetailClient({ project }: { project: any }) {
                   onClick={() => setStatus('RIESGO')}
                   className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${status === 'RIESGO' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-100 hover:border-amber-200 text-slate-500'}`}
                 >
-                  <AlertTriangle className={`w-6 h-6 mb-1 ${status === 'RIESGO' ? 'text-amber-600' : 'text-slate-400'}`} />
+                  <AlertTriangle className={`w-6 h-6 mb-1 ${status === 'RIESGO' ? 'text-amber-600' : 'text-slate.400'}`} />
                   <span className="text-xs font-bold">En Riesgo</span>
                 </button>
                 <button 
@@ -122,7 +155,7 @@ export default function ProjectDetailClient({ project }: { project: any }) {
               <p className="text-sm text-slate-500">No se han registrado materiales para este proyecto.</p>
             ) : (
               <div className="space-y-3 overflow-y-auto max-h-[300px] pr-2">
-                {project.inventory.map((inv: any) => (
+                {project.inventory.map((inv) => (
                   <div key={inv.id} className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
                     <div>
                       <p className="font-medium text-sm text-slate-800">{inv.product.name}</p>
@@ -181,7 +214,7 @@ export default function ProjectDetailClient({ project }: { project: any }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {project.documents.map((doc: any) => {
+                  {project.documents.map((doc) => {
                     const latestVersion = doc.versions[0];
                     const isExpanded = expandedDocs.includes(doc.id);
                     
@@ -219,7 +252,7 @@ export default function ProjectDetailClient({ project }: { project: any }) {
                             <td colSpan={5} className="bg-slate-50 p-0 border-b border-slate-200">
                               <div className="px-14 py-4 space-y-3">
                                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Historial de Versiones</h4>
-                                {doc.versions.map((v: any) => (
+                                {doc.versions.map((v) => (
                                   <div key={v.id} className="flex items-start justify-between bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
                                     <div>
                                       <div className="flex items-center gap-2 mb-1">
