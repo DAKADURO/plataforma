@@ -19,7 +19,7 @@ type ClientOption = {
   name: string;
 };
 
-export default function KanbanBoard({ projects, clients }: { projects: Project[], clients: ClientOption[] }) {
+export default function KanbanBoard({ projects, clients, role }: { projects: Project[], clients: ClientOption[], role: string }) {
   const [isClientModalOpen, setClientModalOpen] = useState(false);
   const [isProjectModalOpen, setProjectModalOpen] = useState(false);
 
@@ -37,22 +37,24 @@ export default function KanbanBoard({ projects, clients }: { projects: Project[]
           <span className="font-medium text-slate-700">Tablero General</span>
         </div>
 
-        <div className="flex gap-3 w-full sm:w-auto">
-          <button
-            onClick={() => setClientModalOpen(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-slate-100 text-slate-700 hover:bg-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            <Users className="w-4 h-4" />
-            Nuevo Cliente
-          </button>
-          <button
-            onClick={() => setProjectModalOpen(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-blue-200"
-          >
-            <Plus className="w-4 h-4" />
-            Nuevo Proyecto
-          </button>
-        </div>
+        {role !== 'TECNICO' && (
+          <div className="flex gap-3 w-full sm:w-auto">
+            <button
+              onClick={() => setClientModalOpen(true)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-slate-100 text-slate-700 hover:bg-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Users className="w-4 h-4" />
+              Nuevo Cliente
+            </button>
+            <button
+              onClick={() => setProjectModalOpen(true)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-blue-200"
+            >
+              <Plus className="w-4 h-4" />
+              Nuevo Proyecto
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

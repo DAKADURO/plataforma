@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { requireRole } from '@/lib/auth'
 
 export async function getProjects() {
   return await prisma.project.findMany({
@@ -40,6 +41,7 @@ export async function getClients() {
 
 export async function createClient(data: { name: string; contact?: string }) {
   try {
+    await requireRole(['ADMIN', 'GERENTE'])
     await prisma.client.create({ data })
     revalidatePath('/proyectos')
     return { success: true }
@@ -51,6 +53,7 @@ export async function createClient(data: { name: string; contact?: string }) {
 
 export async function createProject(data: { name: string; clientId: string }) {
   try {
+    await requireRole(['ADMIN', 'GERENTE'])
     await prisma.project.create({ data })
     revalidatePath('/proyectos')
     return { success: true }
@@ -62,6 +65,7 @@ export async function createProject(data: { name: string; clientId: string }) {
 
 export async function updateProjectStatus(data: { id: string, progress: number, status: string, blockReason?: string | null }) {
   try {
+    await requireRole(['ADMIN', 'GERENTE'])
     await prisma.project.update({
       where: { id: data.id },
       data: {

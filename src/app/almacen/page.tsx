@@ -1,6 +1,7 @@
 import { getProducts, getCategories } from '@/app/actions/almacen'
 import { getProjects } from '@/app/actions/projects'
 import AlmacenClient from '@/components/almacen/AlmacenClient'
+import { getCurrentUserRole } from '@/lib/auth'
 
 type Props = { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }
 
@@ -12,6 +13,7 @@ export default async function AlmacenPage(props: Props) {
   const categories = await getCategories();
   const allProjects = await getProjects();
   const activeProjects = allProjects.filter(p => p.status !== 'CERRADO');
+  const role = await getCurrentUserRole();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-6 md:p-10">
@@ -29,6 +31,7 @@ export default async function AlmacenPage(props: Props) {
             categories={categories} 
             currentCategory={category} 
             projects={activeProjects}
+            role={role || 'TECNICO'}
           />
         </main>
       </div>

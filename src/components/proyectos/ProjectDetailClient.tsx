@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { updateProjectStatus } from '@/app/actions/projects';
-import { ArrowLeft, CheckCircle2, AlertTriangle, XCircle, Users, Package, FileText, UploadCloud, ChevronDown, ChevronRight, Download, Clock } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, AlertTriangle, XCircle, Users, Package, FileText, UploadCloud, ChevronDown, ChevronRight, Download, Clock, Save } from 'lucide-react';
 import Link from 'next/link';
 import UploadDocumentModal from './UploadDocumentModal';
 
@@ -41,7 +41,7 @@ type Project = {
   documents: ProjectDocument[];
 };
 
-export default function ProjectDetailClient({ project }: { project: Project }) {
+export default function ProjectDetailClient({ project, role }: { project: Project, role: string }) {
   const [progress, setProgress] = useState(project.progress);
   const [status, setStatus] = useState(project.status);
   const [blockReason, setBlockReason] = useState(project.blockReason || '');
@@ -54,7 +54,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
     setExpandedDocs(prev => prev.includes(id) ? prev.filter(docId => docId !== id) : [...prev, id]);
   };
 
-  const handleSave = async () => {
+  const handleSaveStatus = async () => {
     setLoading(true);
     setSaved(false);
     await updateProjectStatus({ id: project.id, progress, status, blockReason });
@@ -90,8 +90,9 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
                 type="range" 
                 min="0" max="100" 
                 value={progress} 
+                disabled={role === 'TECNICO'}
                 onChange={(e) => setProgress(Number(e.target.value))}
-                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600 disabled:opacity-50"
               />
             </div>
 
@@ -100,21 +101,24 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
               <div className="grid grid-cols-3 gap-3">
                 <button 
                   onClick={() => setStatus('NORMAL')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${status === 'NORMAL' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-100 hover:border-emerald-200 text-slate-500'}`}
+                  disabled={role === 'TECNICO'}
+                  className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${role === 'TECNICO' ? 'cursor-not-allowed opacity-50' : ''} ${status === 'NORMAL' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-100 hover:border-emerald-200 text-slate-500'}`}
                 >
                   <CheckCircle2 className={`w-6 h-6 mb-1 ${status === 'NORMAL' ? 'text-emerald-600' : 'text-slate-400'}`} />
                   <span className="text-xs font-bold">Normal</span>
                 </button>
                 <button 
                   onClick={() => setStatus('RIESGO')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${status === 'RIESGO' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-100 hover:border-amber-200 text-slate-500'}`}
+                  disabled={role === 'TECNICO'}
+                  className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${role === 'TECNICO' ? 'cursor-not-allowed opacity-50' : ''} ${status === 'RIESGO' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-100 hover:border-amber-200 text-slate-500'}`}
                 >
-                  <AlertTriangle className={`w-6 h-6 mb-1 ${status === 'RIESGO' ? 'text-amber-600' : 'text-slate.400'}`} />
+                  <AlertTriangle className={`w-6 h-6 mb-1 ${status === 'RIESGO' ? 'text-amber-600' : 'text-slate-400'}`} />
                   <span className="text-xs font-bold">En Riesgo</span>
                 </button>
                 <button 
                   onClick={() => setStatus('ATORADO')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${status === 'ATORADO' ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate-100 hover:border-rose-200 text-slate-500'}`}
+                  disabled={role === 'TECNICO'}
+                  className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${role === 'TECNICO' ? 'cursor-not-allowed opacity-50' : ''} ${status === 'ATORADO' ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate-100 hover:border-rose-200 text-slate-500'}`}
                 >
                   <XCircle className={`w-6 h-6 mb-1 ${status === 'ATORADO' ? 'text-rose-600' : 'text-slate-400'}`} />
                   <span className="text-xs font-bold">Atorado</span>
@@ -122,26 +126,39 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
               </div>
             </div>
 
-            {status === 'ATORADO' && (
-              <div className="animate-in fade-in slide-in-from-top-4 duration-300">
-                <label className="block text-sm font-semibold text-rose-700 mb-2">Razón del Bloqueo</label>
+            {status === 'ATORADO' && role !== 'TECNICO' && (
+              <div className="animate-in slide-in-from-top-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">Motivo del Bloqueo</label>
                 <textarea 
-                  value={blockReason} 
-                  onChange={(e) => setBlockReason(e.target.value)}
-                  placeholder="Ej. Falta de material, permisos retrasados..."
-                  className="w-full px-4 py-3 border border-rose-200 bg-rose-50/50 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none text-slate-700 min-h-[100px]"
-                ></textarea>
+                  rows={2}
+                  value={blockReason}
+                  onChange={e => setBlockReason(e.target.value)}
+                  placeholder="Explica brevemente por qué el proyecto está atorado..."
+                  className="block w-full rounded-xl border-slate-300 shadow-sm focus:border-rose-500 focus:ring-rose-500 sm:text-sm p-3 bg-white"
+                />
+              </div>
+            )}
+            {status === 'ATORADO' && role === 'TECNICO' && blockReason && (
+               <div className="animate-in slide-in-from-top-2 p-3 bg-rose-50 rounded-xl border border-rose-200">
+                <label className="block text-sm font-bold text-rose-800 mb-1">Motivo del Bloqueo</label>
+                <p className="text-sm text-rose-700">{blockReason}</p>
               </div>
             )}
 
             <div className="pt-4 flex items-center gap-4">
-              <button 
-                onClick={handleSave} 
-                disabled={loading}
-                className="px-6 py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors shadow-md disabled:opacity-70"
-              >
-                {loading ? 'Guardando...' : 'Guardar Cambios'}
-              </button>
+              {role !== 'TECNICO' && (
+                <button
+                  onClick={handleSaveStatus}
+                  disabled={loading || (status === project.status && progress === project.progress && blockReason === (project.blockReason || ''))}
+                  className="w-full flex justify-center items-center gap-2 rounded-xl border border-transparent bg-slate-900 py-3 px-4 text-sm font-bold text-white shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {loading ? 'Guardando...' : (
+                    <>
+                      <Save className="w-4 h-4" /> Guardar Cambios de Estado
+                    </>
+                  )}
+                </button>
+              )}
               {saved && <span className="text-emerald-600 font-medium text-sm animate-pulse">¡Actualizado!</span>}
             </div>
           </div>

@@ -1,9 +1,11 @@
 import { getProjects, getClients } from '@/app/actions/projects'
 import KanbanBoard from '@/components/proyectos/KanbanBoard'
+import { getCurrentUserRole } from '@/lib/auth'
 
 export default async function ProyectosPage() {
   const projects = await getProjects()
   const clients = await getClients()
+  const role = await getCurrentUserRole()
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-6 md:p-10">
@@ -16,7 +18,7 @@ export default async function ProyectosPage() {
         </header>
 
         <main>
-          <KanbanBoard projects={projects} clients={clients} />
+          <KanbanBoard projects={projects} clients={clients} role={role || 'TECNICO'} />
         </main>
       </div>
     </div>

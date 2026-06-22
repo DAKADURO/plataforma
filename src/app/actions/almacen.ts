@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { requireRole } from '@/lib/auth'
 
 export async function getProducts(category?: string) {
   const products = await prisma.product.findMany({
@@ -38,6 +39,7 @@ export async function getCategories() {
 
 export async function createProduct(data: { sku: string, name: string, category: string, minStock: number }) {
   try {
+    await requireRole(['ADMIN', 'GERENTE'])
     await prisma.product.create({ data })
     revalidatePath('/almacen')
     return { success: true }

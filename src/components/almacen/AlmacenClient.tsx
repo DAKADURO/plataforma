@@ -24,12 +24,14 @@ export default function AlmacenClient({
   products,
   categories,
   currentCategory,
-  projects
+  projects,
+  role
 }: {
   products: Product[];
   categories: string[];
   currentCategory: string;
   projects: ProjectOption[];
+  role: string;
 }) {
   const router = useRouter();
   const [isProductModalOpen, setProductModalOpen] = useState(false);
@@ -70,13 +72,15 @@ export default function AlmacenClient({
             <ArrowRightLeft className="w-4 h-4" />
             Movimiento
           </button>
-          <button
-            onClick={() => setProductModalOpen(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-blue-200"
-          >
-            <Plus className="w-4 h-4" />
-            Nuevo Producto
-          </button>
+          {role !== 'TECNICO' && (
+            <button
+              onClick={() => setProductModalOpen(true)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-blue-200"
+            >
+              <Plus className="w-4 h-4" />
+              Nuevo Producto
+            </button>
+          )}
         </div>
       </div>
 
