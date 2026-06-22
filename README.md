@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Plataforma de Gestión Empresarial Integrada 🚀
 
-## Getting Started
+Plataforma operativa y de gestión de proyectos diseñada para administrar almacenes, proyectos de clientes, control documental técnico (DMS) y proveer un centro de mando en tiempo real. Construida con un stack moderno y escalable.
 
-First, run the development server:
+## 🛠️ Stack Tecnológico
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+*   **Framework:** [Next.js 15 (App Router)](https://nextjs.org/)
+*   **Lenguaje:** [TypeScript](https://www.typescriptlang.org/)
+*   **Estilos:** [Tailwind CSS](https://tailwindcss.com/)
+*   **Base de Datos & ORM:** [PostgreSQL](https://www.postgresql.org/) + [Prisma](https://www.prisma.io/)
+*   **Backend as a Service:** [Supabase](https://supabase.com/) (Autenticación y Storage de archivos)
+*   **Iconografía:** [Lucide React](https://lucide.dev/)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🌟 Características Principales
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 1. 📦 Control Operativo y Almacén
+*   Catálogo de productos dinámico y categorizado (ej. Eléctrico, Acero, Tubería).
+*   Registro y visualización del historial de movimientos (Entradas y Salidas).
+*   Validación de stock disponible.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 2. 📊 CRM y Tablero de Proyectos (Kanban)
+*   Tablero estilo Kanban para visualizar el estado de todos los proyectos (`NORMAL`, `RIESGO`, `ATORADO`).
+*   Directorio de clientes y proyectos asociados.
+*   Control de progreso porcentual (`0-100%`) para cada proyecto.
+*   En caso de que un proyecto se marque como `ATORADO`, se exige capturar la "Razón del Bloqueo".
 
-## Learn More
+### 3. 📂 Gestor Documental Técnico (DMS)
+*   Subida de archivos técnicos y planos al servidor seguro (Supabase Storage).
+*   Control de versiones estricto (V1, V2, V3...) con control de concurrencia y protección contra sobrescritura (race-conditions).
+*   Descarga y previsualización de documentos.
 
-To learn more about Next.js, take a look at the following resources:
+### 4. 📺 Centro de Comando (Visor TV)
+*   Dashboard tipo "kiosco" diseñado para proyectarse en monitores o televisores de planta.
+*   Diseño horizontal con auto-refresco en vivo cada 30 segundos.
+*   Alerta principal con prioridad máxima para proyectos en estado `ATORADO`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 5. 🔒 Seguridad y Roles (RBAC)
+*   Protección de rutas mediante Middleware de Next.js y Supabase Auth SSR.
+*   Jerarquía de permisos estricta integrada en el Backend (Server Actions):
+    *   **TÉCNICO:** Puede ver datos y registrar movimientos de stock / documentos.
+    *   **GERENTE:** Puede crear clientes, productos, proyectos y cambiar estados.
+    *   **ADMIN:** Control total del sistema.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## ⚙️ Configuración y Ejecución Local
 
-## Deploy on Vercel
+### Prerrequisitos
+- [Node.js](https://nodejs.org/en/) (v18+)
+- Una cuenta y un proyecto en [Supabase](https://supabase.com/).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Pasos de Instalación
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1.  **Clonar el repositorio**
+    ```bash
+    git clone https://github.com/DAKADURO/plataforma.git
+    cd plataforma
+    ```
+
+2.  **Instalar dependencias**
+    ```bash
+    npm install
+    ```
+
+3.  **Configurar Variables de Entorno**
+    Crea un archivo `.env` en la raíz del proyecto y agrega tus claves de Supabase:
+    ```env
+    NEXT_PUBLIC_SUPABASE_URL=tu-url-de-supabase
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key-de-supabase
+    DATABASE_URL=tu-cadena-de-conexion-postgres
+    DIRECT_URL=tu-cadena-de-conexion-directa
+    ```
+
+4.  **Generar el Cliente de Prisma y Sincronizar**
+    ```bash
+    npx prisma generate
+    npx prisma db push
+    ```
+
+5.  **Iniciar el servidor de desarrollo**
+    ```bash
+    npm run dev
+    ```
+    Visita `http://localhost:3000` en tu navegador. El sistema te pedirá iniciar sesión.
+
+---
+*Desarrollado con pasión para transformar el control y seguimiento empresarial.*
