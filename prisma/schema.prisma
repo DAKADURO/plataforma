@@ -10,37 +10,37 @@ datasource db {
 // FASE 1: Seguridad y Base
 // =======================
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  role      String   @default("TECNICO") // ADMIN, GERENTE, TECNICO
+  id        String     @id @default(uuid())
+  email     String     @unique
+  role      String     @default("TECNICO") // ADMIN, GERENTE, TECNICO
   logs      AuditLog[]
 }
 
 model AuditLog {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  action      String   // EJ: "CREATE_VERSION", "UPDATE_INVENTORY"
-  entity      String   // EJ: "Document", "Inventory"
-  details     String?  // JSON con cambios
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String   // EJ: "CREATE_VERSION", "UPDATE_INVENTORY"
+  entity    String   // EJ: "Document", "Inventory"
+  details   String?  // JSON con cambios
+  createdAt DateTime @default(now())
 }
 
 // =======================
 // FASE 3: CRM y Proyectos
 // =======================
 model Client {
-  id        String    @id @default(uuid())
-  name      String
-  contact   String?
-  projects  Project[]
+  id       String    @id @default(uuid())
+  name     String
+  contact  String?
+  projects Project[]
 }
 
 model Project {
   id          String      @id @default(uuid())
   name        String
   clientId    String
-  client      Client      @relation(fields: [clientId], references: [id])
+  client      Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
   progress    Int         @default(0) // 0-100
   status      String      @default("NORMAL") // NORMAL, RIESGO, ATORADO
   blockReason String?     // Causa del "Atorado" para el Visor
@@ -52,44 +52,47 @@ model Project {
 // FASE 4: Gestor Documental (DMS)
 // =======================
 model Document {
-  id          String   @id @default(uuid())
-  projectId   String
-  project     Project  @relation(fields: [projectId], references: [id])
-  name        String   // Ej: "Plano_Electrico_Principal"
-  type        String   // PDF, MBM, IMG
-  versions    DocumentVersion[]
+  id        String            @id @default(uuid())
+  projectId String
+  project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String            // Ej: "Plano_Electrico_Principal"
+  type      String            // PDF, MBM, IMG
+  versions  DocumentVersion[]
 }
 
 model DocumentVersion {
-  id          String   @id @default(uuid())
-  documentId  String
-  document    Document @relation(fields: [documentId], references: [id])
-  version     Int      // 1, 2, 3...
-  url         String   // Supabase Storage URL
-  notes       String?  // Ej: "Ajuste de tubería"
-  uploadedBy  String   // userId
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version    Int      // 1, 2, 3...
+  url        String   // Supabase Storage URL
+  notes      String?  // Ej: "Ajuste de tubería"
+  uploadedBy String   // userId
+  createdAt  DateTime @default(now())
+
+  // Prevents race condition: two uploads cannot create the same version number for the same document
+  @@unique([documentId, version])
 }
 
 // =======================
 // FASE 2: Almacén e Inventario
 // =======================
 model Product {
-  id          String   @id @default(uuid())
-  sku         String   @unique
-  name        String
-  category    String
-  minStock    Int      @default(5)
-  inventory   Inventory[]
+  id        String      @id @default(uuid())
+  sku       String      @unique
+  name      String
+  category  String
+  minStock  Int         @default(5)
+  inventory Inventory[]
 }
 
 model Inventory {
-  id          String   @id @default(uuid())
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id])
-  projectId   String?  // Puede estar asignado a un proyecto
-  project     Project? @relation(fields: [projectId], references: [id])
-  quantity    Int
-  type        String   // ENTRADA, SALIDA
-  date        DateTime @default(now())
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict) // Prevent deleting products with history
+  projectId String?  // Puede estar asignado a un proyecto
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)  // If project is deleted, keep the movement record but unlink it
+  quantity  Int
+  type      String   // ENTRADA, SALIDA
+  date      DateTime @default(now())
 }
