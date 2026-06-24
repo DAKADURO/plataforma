@@ -53,7 +53,12 @@ Esta arquitectura moderna y serverless asegura baja latencia y alta escalabilida
 El acceso a la información confidencial está blindado en múltiples capas.
 La interceptación de rutas opera nativamente en el *Edge* vía `proxy.ts`, garantizando velocidad y seguridad.
 
-**Flujo de Aprobación (Zero-Trust):**
+**Protección Estricta (Zero-Trust & Hardening):**
+- **Bloqueo por Defecto (Fail-Closed):** Si una sesión no puede resolver su rol correctamente, el sistema deniega el acceso automáticamente en toda la interfaz en lugar de otorgar permisos mínimos.
+- **Prevención BOLA/IDOR:** Los usuarios con rol **PENDIENTE** están bloqueados a nivel de backend (Server Actions) de realizar cualquier consulta de lectura o escritura en la base de datos.
+- **Anti-Spoofing en DMS:** La autoría de documentos y planos se extrae estrictamente del token de sesión (JWT) en el servidor, eliminando la manipulación desde el lado del cliente.
+
+**Flujo de Aprobación:**
 1. Un empleado utiliza el módulo de **/registro** para solicitar acceso.
 2. Su cuenta se crea de forma segura, pero se inyecta a la base de datos con un rol **PENDIENTE**. El usuario *no puede ver absolutamente nada* del sistema.
 3. Un usuario nivel `ADMIN` entra al panel de **Directorio de Usuarios** y aprueba el acceso promoviéndolo al rol correspondiente.
