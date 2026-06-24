@@ -6,36 +6,6 @@ import { requireRole } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 
-import { unstable_cache } from 'next/cache';
-
-const getCachedAnalyticsData = unstable_cache(
-  async () => {
-    const [projects, products, clients] = await Promise.all([
-      getProjects(),
-      getProducts(),
-      getClients(),
-    ]);
-
-    // Enrich projects with their document count
-    const projectsWithDocs = await prisma.project.findMany({
-      select: {
-        id: true,
-        documents: { select: { id: true } }
-      }
-    });
-    
-    const docCountMap = Object.fromEntries(projectsWithDocs.map(p => [p.id, p.documents]));
-    const enrichedProjects = projects.map(p => ({
-      ...p,
-      documents: docCountMap[p.id] ?? [],
-    }));
-
-    return { enrichedProjects, products, clients };
-  },
-  ['analytics-dashboard-data'],
-  { revalidate: 300 } // Cache for 5 minutes
-);
-
 export default async function AnaliticasPage() {
   // Solo Administradores y Gerentes pueden ver las analíticas ejecutivas
   const userRole = await requireRole(['ADMIN', 'GERENTE']).catch(() => null);
@@ -44,7 +14,27 @@ export default async function AnaliticasPage() {
     redirect('/almacen');
   }
 
-  const { enrichedProjects, products, clients } = await getCachedAnalyticsData();
+  // Fetching live data since analytics should be fresh, and unstable_cache 
+  // conflicts with the new role-based security (cookies cannot be read inside unstable_cache)
+  const [projects, products, clients] = await Promise.all([
+    getProjects(),
+    getProducts(),
+    getClients(),
+  ]);
+
+  // Enrich projects with their document count
+  const projectsWithDocs = await prisma.project.findMany({
+    select: {
+      id: true,
+      documents: { select: { id: true } }
+    }
+  });
+  
+  const docCountMap = Object.fromEntries(projectsWithDocs.map(p => [p.id, p.documents]));
+  const enrichedProjects = projects.map(p => ({
+    ...p,
+    documents: docCountMap[p.id] ?? [],
+  }));
 
   return (
     <div className="space-y-6">
