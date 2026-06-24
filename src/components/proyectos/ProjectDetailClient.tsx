@@ -27,6 +27,7 @@ type ProjectDocument = {
   id: string;
   name: string;
   type: string;
+  folder: string;
   versions: DocumentVersion[];
 };
 
@@ -496,58 +497,83 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
             <p className="text-sm text-slate-600 mt-1">Sube el primer plano o documento para empezar.</p>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {project.documents.map(doc => {
-              const latestVersion = doc.versions[0];
-              const isExpanded = expandedDocs.includes(doc.id);
-              return (
-                <Card key={doc.id} className="p-4 border border-white/10">
-                  <div className="flex items-center justify-between mb-2">
-                    <button onClick={() => toggleDoc(doc.id)} className="flex items-center gap-1 text-slate-400 hover:text-blue-400">
-                      {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      <span className="font-medium text-sm text-white">{doc.name}</span>
-                    </button>
-                    <span className="uppercase text-xs font-bold text-slate-500">{doc.type}</span>
+          <div className="space-y-6">
+            {Object.entries(
+              project.documents.reduce((acc, doc) => {
+                const f = doc.folder || 'General';
+                if (!acc[f]) acc[f] = [];
+                acc[f].push(doc);
+                return acc;
+              }, {} as Record<string, ProjectDocument[]>)
+            ).sort(([a], [b]) => a.localeCompare(b)).map(([folderName, docsInFolder]) => (
+              <div key={folderName} className="bg-[#1a1a1a] rounded-xl border border-white/5 overflow-hidden">
+                <div className="bg-white/5 px-4 py-3 border-b border-white/5 flex items-center gap-2">
+                  <div className="p-1.5 bg-blue-500/10 rounded-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
+                      <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path>
+                    </svg>
                   </div>
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span className="bg-blue-500/10 text-blue-400 px-2 py-1 rounded-md font-semibold border border-blue-500/20 text-xs">
-                      v{latestVersion?.version}
-                    </span>
-                    <span className="text-slate-500 text-xs">
-                      {latestVersion ? new Date(latestVersion.createdAt).toLocaleDateString() : '-'}
-                    </span>
-                  </div>
-                  {latestVersion?.url && (
-                    <a href={latestVersion.url} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-blue-400 hover:text-blue-300
-                        font-medium text-xs bg-blue-500/10 hover:bg-blue-500/20 px-3 py-1.5 rounded-lg transition-colors">
-                      <Download className="w-3.5 h-3.5" /> Descargar
-                    </a>
-                  )}
-                  {isExpanded && (
-                    <div className="mt-4 space-y-3">
-                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Historial de Versiones</h4>
-                      {doc.versions.map(v => (
-                        <Card key={v.id} className="p-3 border border-white/10 bg-[#1a1a1a]">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-bold text-slate-300 bg-white/10 px-2 py-0.5 rounded text-xs">v{v.version}</span>
-                            <span className="text-xs text-slate-500 flex items-center gap-1">
-                              <Clock className="w-3 h-3" /> {new Date(v.createdAt).toLocaleString()}
-                            </span>
-                            <span className="text-xs text-slate-500 border-l border-white/10 pl-2 ml-1">por {v.uploadedBy}</span>
-                          </div>
-                          <p className="text-sm text-slate-400">{v.notes || <span className="italic text-slate-600">Sin notas adicionales</span>}</p>
-                          <a href={v.url} target="_blank" rel="noopener noreferrer"
-                            className="p-2 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors inline-block mt-2">
-                            <Download className="w-4 h-4" />
+                  <h3 className="font-bold text-slate-200">{folderName}</h3>
+                  <span className="text-xs font-bold bg-white/10 text-slate-400 px-2 py-0.5 rounded-md ml-2">
+                    {docsInFolder.length}
+                  </span>
+                </div>
+                
+                <div className="p-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {docsInFolder.map(doc => {
+                    const latestVersion = doc.versions[0];
+                    const isExpanded = expandedDocs.includes(doc.id);
+                    return (
+                      <Card key={doc.id} className="p-4 border border-white/10 bg-[#151515]">
+                        <div className="flex items-center justify-between mb-2">
+                          <button onClick={() => toggleDoc(doc.id)} className="flex items-center gap-1 text-slate-400 hover:text-blue-400">
+                            {isExpanded ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
+                            <span className="font-medium text-sm text-white truncate text-left">{doc.name}</span>
+                          </button>
+                          <span className="uppercase text-[10px] font-bold text-slate-500 shrink-0">{doc.type}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm mb-3">
+                          <span className="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-md font-semibold border border-blue-500/20 text-xs">
+                            v{latestVersion?.version}
+                          </span>
+                          <span className="text-slate-500 text-xs">
+                            {latestVersion ? new Date(latestVersion.createdAt).toLocaleDateString() : '-'}
+                          </span>
+                        </div>
+                        {latestVersion?.url && (
+                          <a href={latestVersion.url} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center w-full gap-1.5 text-blue-400 hover:text-blue-300
+                              font-medium text-xs bg-blue-500/10 hover:bg-blue-500/20 px-3 py-2 rounded-lg transition-colors">
+                            <Download className="w-3.5 h-3.5" /> Descargar Última Versión
                           </a>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              );
-            })}
+                        )}
+                        {isExpanded && (
+                          <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
+                            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Historial de Versiones</h4>
+                            {doc.versions.map(v => (
+                              <div key={v.id} className="p-3 border border-white/5 rounded-lg bg-[#1a1a1a]">
+                                <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                  <span className="font-bold text-slate-300 bg-white/10 px-1.5 py-0.5 rounded text-[10px]">v{v.version}</span>
+                                  <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" /> {new Date(v.createdAt).toLocaleString()}
+                                  </span>
+                                  <span className="text-[10px] text-slate-500 border-l border-white/10 pl-2">por {v.uploadedBy}</span>
+                                </div>
+                                <p className="text-xs text-slate-400 mb-2 leading-relaxed">{v.notes || <span className="italic text-slate-600">Sin notas adicionales</span>}</p>
+                                <a href={v.url} target="_blank" rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 px-2 py-1 rounded transition-colors">
+                                  <Download className="w-3 h-3" /> Bajar esta versión
+                                </a>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

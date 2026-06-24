@@ -77,6 +77,7 @@ model Document {
   project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   name      String            // Ej: "Plano_Electrico_Principal"
   type      String            // PDF, MBM, IMG
+  folder    String            @default("General")
   versions  DocumentVersion[]
 }
 

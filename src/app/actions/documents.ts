@@ -8,6 +8,7 @@ export async function addDocumentVersion(data: {
   name: string;
   type: string;
   url: string;
+  folder?: string;
   notes?: string;
   uploadedBy: string;
 }) {
@@ -28,6 +29,7 @@ export async function addDocumentVersion(data: {
           projectId: data.projectId,
           name: data.name,
           type: data.type,
+          folder: data.folder || 'General',
           versions: {
             create: {
               version: 1,

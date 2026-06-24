@@ -16,6 +16,7 @@ export default function UploadDocumentModal({
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState('');
+  const [folder, setFolder] = useState('General');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -55,6 +56,7 @@ export default function UploadDocumentModal({
         name,
         type: fileExt || 'unknown',
         url: publicUrl,
+        folder,
         notes,
         uploadedBy: 'Usuario Actual' // In a real app, this would be the logged in user ID
       });
@@ -64,6 +66,7 @@ export default function UploadDocumentModal({
       // Reset & Close
       setFile(null);
       setName('');
+      setFolder('General');
       setNotes('');
       onClose();
     } catch (err) {
@@ -72,6 +75,14 @@ export default function UploadDocumentModal({
       setLoading(false);
     }
   };
+
+  const predefinedFolders = [
+    "General",
+    "Planos y Diagramas",
+    "Catálogos Técnicos",
+    "Permisos",
+    "Formatos y Contratos"
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -93,6 +104,22 @@ export default function UploadDocumentModal({
               placeholder="Ej. Plano Eléctrico Principal"
             />
             <p className="text-xs text-slate-500 mt-1">Si el nombre ya existe en este proyecto, se creará una nueva versión automáticamente.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Carpeta de Destino</label>
+            <input 
+              required 
+              type="text" 
+              list="folder-options"
+              value={folder} 
+              onChange={e => setFolder(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              placeholder="Escribe o selecciona una carpeta..."
+            />
+            <datalist id="folder-options">
+              {predefinedFolders.map(f => <option key={f} value={f} />)}
+            </datalist>
           </div>
 
           <div>
