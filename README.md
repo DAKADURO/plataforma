@@ -11,6 +11,7 @@ Plataforma operativa y de gestión de proyectos de alto nivel, diseñada bajo un
 *   **Backend as a Service:** [Supabase](https://supabase.com/) (Autenticación, Storage y WebSockets Real-time)
 *   **Gráficas:** [Recharts](https://recharts.org/)
 *   **Iconografía:** [Lucide React](https://lucide.dev/)
+*   **Despliegue (Hosting):** [Railway](https://railway.app/)
 
 ## 🌟 Módulos y Características Principales
 
@@ -21,8 +22,9 @@ Plataforma operativa y de gestión de proyectos de alto nivel, diseñada bajo un
 
 ### 2. 📊 CRM y Tablero de Proyectos (Kanban)
 *   Tablero interactivo estilo Kanban para monitorear el estado operativo (`NORMAL`, `RIESGO`, `ATORADO`).
+*   **Control de Tiempos y Fases:** Seguimiento realista con **Fecha de Inicio**, **Fecha Final Estimada** y transición entre las fases del proyecto (`Planificación`, `Compras/Ingeniería`, `Ejecución`, `Cierre`).
 *   Directorio de clientes y proyectos vinculados con barras de progreso métricas (`0-100%`).
-*   Bloqueo documentado: si un proyecto entra en estado `ATORADO`, el gerente debe capturar el "Motivo del Bloqueo", visible para todo el equipo.
+*   **Bloqueo documentado:** Si un proyecto entra en estado `ATORADO`, el gerente debe capturar el "Motivo del Bloqueo", visible para todo el equipo.
 
 ### 3. 📂 Gestor Documental Técnico (DMS)
 *   Repositorio seguro integrado en cada proyecto para planos y archivos técnicos (respaldado por Supabase Storage).
@@ -39,11 +41,11 @@ Plataforma operativa y de gestión de proyectos de alto nivel, diseñada bajo un
 *   Auto-refresco silencioso y notificaciones de parpadeo visual en proyectos críticos.
 
 ### 6. 🔒 Seguridad y Roles (RBAC)
-*   La aplicación carece deliberadamente de Tema Claro; emplea una Interfaz Oscura premium e inmersiva.
+*   La aplicación emplea una Interfaz Oscura premium e inmersiva.
 *   Protección de rutas SSR mediante Supabase Auth y Middleware de Next.js.
 *   Jerarquía de permisos y roles:
-    *   **TÉCNICO:** Visualiza tableros, registra inventario y sube versiones de documentos. No puede cambiar los estados críticos del proyecto.
-    *   **GERENTE / ADMIN:** Control total operativo, modificación de clientes, productos, asignación de bloqueos y visualización analítica.
+    *   **TÉCNICO:** Visualiza tableros, registra inventario y sube versiones de documentos. No puede cambiar los estados críticos del proyecto ni fases.
+    *   **GERENTE / ADMIN:** Control total operativo, modificación de clientes, productos, fases, fechas, asignación de bloqueos y visualización analítica.
 
 ## ⚙️ Configuración y Ejecución Local
 
@@ -70,6 +72,7 @@ Plataforma operativa y de gestión de proyectos de alto nivel, diseñada bajo un
     ```
 
 3.  **Generar el Cliente de Prisma y Sincronizar**
+    Para sincronizar la base de datos debes asegurarte de que `DATABASE_URL` (o `DIRECT_URL`) apunte al puerto directo (`5432`) durante este paso:
     ```bash
     npx prisma generate
     npx prisma db push
@@ -80,6 +83,13 @@ Plataforma operativa y de gestión de proyectos de alto nivel, diseñada bajo un
     npm run dev
     ```
     Visita `http://localhost:3000` en tu navegador. 
+
+## 🚀 Despliegue en Producción (Railway)
+El proyecto está optimizado para despliegue automático en **Railway**. 
+1. Conecta tu cuenta de GitHub a Railway.
+2. Despliega el repositorio de la plataforma.
+3. Configura las variables de entorno (`DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, etc.).
+4. Railway detectará los comandos de `Next.js` y `Prisma` automáticamente y pondrá tu sitio en vivo con un dominio `.up.railway.app`.
 
 ---
 *Desarrollado para Menrit Sears, transformando el control operativo.*

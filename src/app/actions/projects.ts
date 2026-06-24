@@ -28,6 +28,9 @@ export async function getProjectById(id: string) {
             orderBy: { version: 'desc' }
           }
         }
+      },
+      tasks: {
+        orderBy: { createdAt: 'asc' }
       }
     }
   })
@@ -65,24 +68,16 @@ export async function createProject(data: { name: string; clientId: string }) {
 
 export async function updateProjectStatus(data: { 
   id: string, 
-  progress: number, 
   status: string, 
   blockReason?: string | null,
-  phase?: string,
-  startDate?: Date | null,
-  endDate?: Date | null
 }) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
     await prisma.project.update({
       where: { id: data.id },
       data: {
-        progress: data.progress,
         status: data.status,
         blockReason: data.status === 'ATORADO' ? data.blockReason : null,
-        phase: data.phase,
-        startDate: data.startDate,
-        endDate: data.endDate
       }
     })
     revalidatePath('/proyectos')
@@ -93,3 +88,4 @@ export async function updateProjectStatus(data: {
     return { success: false, error: message }
   }
 }
+
