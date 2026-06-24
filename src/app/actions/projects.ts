@@ -57,7 +57,7 @@ export async function createClient(data: z.infer<typeof createClientSchema>) {
     return { success: true }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { success: false, error: error.errors[0].message }
+      return { success: false, error: error.message }
     }
     const message = error instanceof Error ? error.message : 'Error desconocido'
     return { success: false, error: message }
@@ -73,7 +73,7 @@ export async function createProject(data: z.infer<typeof createProjectSchema>) {
     return { success: true }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { success: false, error: error.errors[0].message }
+      return { success: false, error: error.message }
     }
     const message = error instanceof Error ? error.message : 'Error desconocido'
     return { success: false, error: message }
