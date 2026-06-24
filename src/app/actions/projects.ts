@@ -7,7 +7,10 @@ import { requireRole } from '@/lib/auth'
 export async function getProjects() {
   return await prisma.project.findMany({
     include: {
-      client: true
+      client: true,
+      tasks: {
+        select: { status: true }
+      }
     },
     orderBy: { name: 'asc' }
   })

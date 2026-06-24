@@ -138,6 +138,9 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
 
 .animate-fade-in  { animation: fadeIn 0.25s ease both; }
 .animate-slide-down { animation: slideDown 0.2s ease both; }
