@@ -3,6 +3,8 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { requireRole } from '@/lib/auth'
+import { createClientSchema, createProjectSchema } from '@/lib/validations'
+import { z } from 'zod'
 
 export async function getProjects() {
   return await prisma.project.findMany({
@@ -45,25 +47,34 @@ export async function getClients() {
   })
 }
 
-export async function createClient(data: { name: string; contact?: string }) {
+export async function createClient(data: z.infer<typeof createClientSchema>) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
-    await prisma.client.create({ data })
+    const validData = createClientSchema.parse(data)
+    await prisma.client.create({ data: validData })
     revalidatePath('/proyectos')
+    revalidatePath('/clientes')
     return { success: true }
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.errors[0].message }
+    }
     const message = error instanceof Error ? error.message : 'Error desconocido'
     return { success: false, error: message }
   }
 }
 
-export async function createProject(data: { name: string; clientId: string }) {
+export async function createProject(data: z.infer<typeof createProjectSchema>) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
-    await prisma.project.create({ data })
+    const validData = createProjectSchema.parse(data)
+    await prisma.project.create({ data: validData })
     revalidatePath('/proyectos')
     return { success: true }
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.errors[0].message }
+    }
     const message = error instanceof Error ? error.message : 'Error desconocido'
     return { success: false, error: message }
   }

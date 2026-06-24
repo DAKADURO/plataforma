@@ -51,6 +51,9 @@ model Project {
   documents   Document[]
   inventory   Inventory[]
   tasks       ProjectTask[]
+
+  @@index([clientId])
+  @@index([status])
 }
 
 // =======================
@@ -66,6 +69,9 @@ model ProjectTask {
   progress  Int       @default(0) // 0-100
   status    String    @default("PENDIENTE") // PENDIENTE, EN_PROGRESO, COMPLETADA
   createdAt DateTime  @default(now())
+
+  @@index([projectId])
+  @@index([status])
 }
 
 // =======================
@@ -79,6 +85,8 @@ model Document {
   type      String            // PDF, MBM, IMG
   folder    String            @default("General")
   versions  DocumentVersion[]
+
+  @@index([projectId])
 }
 
 model DocumentVersion {
@@ -93,6 +101,7 @@ model DocumentVersion {
 
   // Prevents race condition: two uploads cannot create the same version number for the same document
   @@unique([documentId, version])
+  @@index([documentId])
 }
 
 // =======================
@@ -105,6 +114,8 @@ model Product {
   category  String
   minStock  Int         @default(5)
   inventory Inventory[]
+
+  @@index([category])
 }
 
 model Inventory {
@@ -116,4 +127,8 @@ model Inventory {
   quantity  Int
   type      String   // ENTRADA, SALIDA
   date      DateTime @default(now())
+
+  @@index([productId])
+  @@index([projectId])
+  @@index([type])
 }
