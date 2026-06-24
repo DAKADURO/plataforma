@@ -1,84 +1,111 @@
-# 🚀 Plataforma de Gestión Operativa Integral
+<div align="center">
+  <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/shield.svg" width="80" alt="Logo">
+  <h1 align="center">Menrit Sears - Plataforma Operativa B2B</h1>
+  
+  <p align="center">
+    <strong>Sistema integral de Control Operativo, Gestor Documental (DMS) y Centro de Comando Ejecutivo.</strong>
+  </p>
 
-Plataforma empresarial de alto rendimiento diseñada para la gestión de proyectos, control documental, inventario industrial, análisis ejecutivo y CRM B2B. Construida con un enfoque en **Diseño Premium (Glassmorphism, Bento Grid)** y una experiencia de usuario extremadamente fluida.
-
----
-
-## 🌟 Características Principales
-
-### 📊 Centro de Comando Inmersivo (/visor)
-- **Modo Kiosco (Pantalla Completa):** Optimizado para Smart TVs y monitores de operación. No hay barra de navegación que distraiga.
-- **Bento Grid:** Layout tipo mosaico responsivo y estético.
-- **Alertas Visuales (Glow & Pulse):** Indicadores visuales fuertes para estados críticos (Proyectos Atorados en rojo con animación de pulso, Proyectos en Riesgo en ámbar).
-- **Glassmorphism:** Diseño de tarjetas semitransparentes sobre un fondo oscuro con gradiente radial.
-- **Progreso Dinámico:** Barras de progreso con animaciones de resplandor (shimmer) y conteo de tareas en tiempo real.
-
-### 📋 Tablero Kanban Premium (/proyectos)
-- **Estilo Jira / Linear:** Diseño oscuro, enfocado y profesional.
-- **Swimlanes Diferenciados:** Columnas con fondos tenues personalizados (Verde, Ámbar, Rojo).
-- **Scroll Inteligente:** Altura fija con `overflow-y-auto` que mantiene siempre visible el encabezado de las columnas.
-- **Tarjetas Enriquecidas:** Muestran el progreso, número de tareas completadas, y empresa cliente. Cuentan con animaciones de elevación al pasar el ratón (`hover:-translate-y-1`).
-- **Buscador Integrado:** Búsqueda en tiempo real por proyecto o nombre de cliente.
-
-### 📂 Gestor Documental Técnico - DMS (/proyectos/[id])
-- **Carpetas Dinámicas:** Organización visual de archivos técnicos mediante agrupaciones (Ej. "Planos y Diagramas", "Permisos", "Formatos y Contratos").
-- **Control de Versiones:** Historial de revisiones de cada documento técnico con fecha y autor.
-- **Almacenamiento Seguro:** Subida de archivos directamente a Supabase Storage con sanitización automática de nombres de archivo (evitando errores por caracteres especiales o espacios).
-- **Plan de Trabajo (Tareas):** Gestor de tareas embebido dentro de cada proyecto con asignación de fechas de inicio, fin y actualización de progreso individual.
-
-### 📈 Analíticas Ejecutivas (/analiticas)
-- **Dashboard Premium:** Visión global del estado de la empresa diseñada para gerentes y administradores.
-- **KPIs Enriquecidos:** Tarjetas "Glassmorphism" con orbes de brillo para métricas clave (Proyectos Activos, Progreso, Alertas de Stock, Clientes Activos, Proyectos en Riesgo, Documentos).
-- **Gráficos Recharts Personalizados:**
-  - *Gráfico Donut (Anillo):* Distribución de estados semánticos sin bordes blancos y con un contador central total.
-  - *Gráfico de Barras:* Progreso de cada proyecto individual con puntas redondeadas y guías visuales (`CartesianGrid`) sutiles.
-- **Tooltips Oscuros:** Popups informativos estéticos que mantienen el diseño de la aplicación al interactuar con las gráficas.
-
-### 🏢 Directorio de Clientes y CRM (/clientes)
-- **Directorio Profesional:** Modal a doble columna para creación y edición.
-- **Campos Completos B2B:** Registro de Teléfono, Email, RFC (Identificación Fiscal) y Dirección Física.
-- **Acciones Rápidas:** Enlaces `mailto:` y `tel:` directos en la tabla para comunicación inmediata.
-
-### 📦 Control de Almacén (/almacen)
-- **Data Table Industrial:** Vista en formato tabla optimizada para buscar rápidamente y visualizar el stock crítico.
-- **Indicadores (Badges):** Etiquetas de colores para identificar instantáneamente si el stock está en un nivel suficiente o crítico.
-- **Entradas y Salidas:** Botones de acción directa para gestionar el inventario.
+  <p align="center">
+    <a href="#-características">Características</a> •
+    <a href="#-tecnologías">Tecnologías</a> •
+    <a href="#-arquitectura">Arquitectura</a> •
+    <a href="#-seguridad-y-roles">Seguridad</a> •
+    <a href="#-despliegue">Despliegue</a>
+  </p>
+</div>
 
 ---
 
-## 🛠️ Stack Tecnológico
+## ⚡ Características
 
-- **Framework Frontend:** [Next.js 14/15](https://nextjs.org/) (App Router, Server Actions)
-- **Lenguaje:** TypeScript
-- **Estilos:** Tailwind CSS (Dark Mode nativo, Glassmorphism)
-- **Íconos:** Lucide React
-- **Gráficos:** Recharts
-- **Base de Datos:** PostgreSQL (alojada en [Supabase](https://supabase.com/))
-- **ORM:** Prisma
-- **Autenticación y Storage:** Supabase Auth & Storage
+La plataforma está construida con una filosofía de diseño **Premium / Enterprise (Bento Grid + Glassmorphism)**, asegurando que la experiencia de usuario sea tanto estéticamente imponente como altamente funcional.
 
----
+### 🏭 Operativa y Logística
+- **Tablero Kanban Inteligente:** Gestión de proyectos B2B estilo *Jira / Linear* con "Swimlanes" interactivos, arrastre suave y diferenciación por estados (Normal, Riesgo, Atorado).
+- **Gestor Documental Técnico (DMS):** Organización de activos en "Carpetas Dinámicas" virtuales, con soporte de versionado de planos y documentos técnicos (Almacenado directamente en la nube).
+- **Control de Almacén:** Data Table industrial para rastreo de stock en tiempo real, alertas de stock mínimo (Badges semánticos) y movimientos de entrada/salida (Kardex).
 
-## ⚙️ Estructura del Esquema de Datos (Prisma)
-
-El modelo de datos relacional incluye:
-- `User`: Gestión de roles (Admin, Gerente, Técnico).
-- `Client`: CRM B2B con datos fiscales y de contacto.
-- `Project`: Eje central que agrupa Tareas, Documentos e Inventario usado.
-- `ProjectTask`: Planificador dinámico estilo Gantt para seguimiento granular.
-- `Document` y `DocumentVersion`: DMS con soporte de carpetas.
-- `Product` e `InventoryEntry`: Control de catálogo de almacén y movimientos (Kardex).
+### 📈 Ejecutiva y Analítica
+- **Analíticas Avanzadas:** Dashboard para gerencia con gráficos de anillo dinámicos y barras de gradiente suavizado que visualizan la salud financiera y operativa de todos los proyectos al instante.
+- **Centro de Comando (Kiosko):** Vista inmersiva "Full-Screen" optimizada para Smart TVs en las instalaciones. Interfaz oscura profunda con *glow orbs* para monitorear el progreso y retrasos en piso.
+- **Directorio de Clientes CRM:** Gestión relacional con información técnica, correos, RFC y contactos anclados a cada proyecto activo.
 
 ---
 
-## 🚀 Despliegue
+## 🛠 Tecnologías
 
-La plataforma está optimizada para ser desplegada en entornos compatibles con Next.js (ej. Vercel, Railway).
-Se utiliza el comando de compilación por defecto de Next.js (`next build`).
+Esta arquitectura moderna y serverless asegura baja latencia y alta escalabilidad:
 
-*Para despliegues locales, recuerda asegurar tus variables de entorno:*
-- `DATABASE_URL` y `DIRECT_URL` (Supabase Connection Pooler)
-- `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+| Capa | Tecnología | Detalles |
+| :--- | :--- | :--- |
+| **Frontend** | ![Next.js](https://img.shields.io/badge/Next.js%2014-black?style=flat&logo=next.js) | App Router, Server Actions, React 19 |
+| **Styling** | ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat&logo=tailwind-css&logoColor=white) | Modo oscuro nativo, Glassmorphism UI |
+| **Base de Datos** | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=flat&logo=postgresql&logoColor=white) | Relacional de alto rendimiento |
+| **ORM** | ![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=flat&logo=prisma&logoColor=white) | Tipado estricto extremo a extremo |
+| **Autenticación** | ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat&logo=supabase&logoColor=white) | JWT Auth en el Borde (Edge Proxy) |
+| **Gráficos** | ![Recharts](https://img.shields.io/badge/Recharts-22b5bf?style=flat) | Renderizado SVG optimizado |
 
 ---
-*Plataforma desarrollada para maximizar el control, la estética y la experiencia de usuario ejecutiva.*
+
+## 🛡️ Seguridad y Roles (RBAC)
+
+El acceso a la información confidencial está blindado en múltiples capas.
+La interceptación de rutas opera nativamente en el *Edge* vía `proxy.ts`, garantizando velocidad y seguridad.
+
+**Flujo de Aprobación (Zero-Trust):**
+1. Un empleado utiliza el módulo de **/registro** para solicitar acceso.
+2. Su cuenta se crea de forma segura, pero se inyecta a la base de datos con un rol **PENDIENTE**. El usuario *no puede ver absolutamente nada* del sistema.
+3. Un usuario nivel `ADMIN` entra al panel de **Directorio de Usuarios** y aprueba el acceso promoviéndolo al rol correspondiente.
+
+**Jerarquía de Roles:**
+- 🔴 **ADMIN:** Acceso irrestricto, capacidad para modificar roles de sistema e infraestructura base.
+- 🔵 **GERENTE:** Capacidad de gestión, creación de clientes, apertura de proyectos, acceso a Analíticas y proyecciones.
+- 🟢 **TÉCNICO:** Operatividad pura en piso (Completar tareas del Kanban, subir archivos al DMS, ajustar inventario en almacén).
+
+---
+
+## 🏗 Arquitectura de Datos (Resumen de Esquema)
+
+El sistema opera bajo un diagrama de Relación de Entidades estrictamente anclado a un **Proyecto**:
+
+```mermaid
+erDiagram
+    PROJECT ||--o{ PROJECT_TASK : contains
+    PROJECT ||--o{ DOCUMENT : has
+    CLIENT ||--o{ PROJECT : requests
+    DOCUMENT ||--|{ DOCUMENT_VERSION : tracks
+    PRODUCT ||--o{ INVENTORY : records
+    PROJECT ||--o{ INVENTORY : uses
+```
+
+---
+
+## 🚀 Guía de Despliegue
+
+Este repositorio está preparado para integración y despliegue continuo (CI/CD) en plataformas nativas como **Vercel** o **Railway**.
+
+### 1. Variables de Entorno (Producción)
+Se requieren estrictamente los siguientes secretos para poder inicializar los contenedores:
+```env
+# Prisma Connection Pooler
+DATABASE_URL="postgres://postgres.xxx:xxx@aws-0-us-west-2.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgres://postgres.xxx:xxx@aws-0-us-west-2.pooler.supabase.com:5432/postgres"
+
+# Supabase Auth & Storage API
+NEXT_PUBLIC_SUPABASE_URL="https://xxx.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1..."
+```
+
+### 2. Comandos de Compilación
+El flujo estándar es detectado automáticamente por `npm run build`:
+```bash
+npm install
+npx prisma generate
+next build
+```
+
+---
+<p align="center">
+  <i>Construido para velocidad. Diseñado para escalar.</i>
+</p>
