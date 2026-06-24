@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createMovement } from '@/app/actions/almacen';
 import { X } from 'lucide-react';
 
@@ -13,19 +13,34 @@ export default function MovementModal({
   isOpen, 
   onClose,
   products,
-  projects
+  projects,
+  initialProductId = '',
+  initialType = 'ENTRADA'
 }: { 
   isOpen: boolean; 
   onClose: () => void;
   products: { id: string, name: string, sku: string, stock: number }[];
   projects: ProjectOption[];
+  initialProductId?: string;
+  initialType?: 'ENTRADA' | 'SALIDA';
 }) {
-  const [productId, setProductId] = useState('');
+  const [productId, setProductId] = useState(initialProductId);
   const [quantity, setQuantity] = useState<number | ''>(1);
-  const [type, setType] = useState<'ENTRADA' | 'SALIDA'>('ENTRADA');
+  const [type, setType] = useState<'ENTRADA' | 'SALIDA'>(initialType);
   const [projectId, setProjectId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Update state when props change
+  useEffect(() => {
+    if (isOpen) {
+      setProductId(initialProductId);
+      setType(initialType);
+      setQuantity(1);
+      setProjectId('');
+      setError('');
+    }
+  }, [isOpen, initialProductId, initialType]);
 
   if (!isOpen) return null;
 
