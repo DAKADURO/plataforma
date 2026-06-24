@@ -84,7 +84,15 @@ export default function ClientManager({ initialClients, userRole }: { initialCli
       const res = await updateClient(editingClient.id, payload)
       if (res.success) {
         setClients(prev => prev.map(c => c.id === editingClient.id
-          ? { ...c, ...payload, email: form.email || null, phone: form.phone || null, rfc: form.rfc || null, address: form.address || null }
+          ? {
+              ...c,
+              name: form.name,
+              contact: form.contact || null,
+              email: form.email || null,
+              phone: form.phone || null,
+              rfc: form.rfc || null,
+              address: form.address || null,
+            }
           : c
         ))
         setIsModalOpen(false)
