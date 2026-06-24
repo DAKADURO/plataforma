@@ -81,6 +81,28 @@ erDiagram
 
 ---
 
+## 🧠 Arquitectura Interna y Flujo (Cómo Funciona)
+
+El sistema opera utilizando un patrón arquitectónico fuertemente acoplado a **Next.js 14/15 App Router** y al paradigma de **Server Actions**. Esto significa que *no existen rutas de API REST tradicionales* (endpoints `/api/...`); toda la mutación de datos ocurre a través de llamadas RPC seguras de extremo a extremo.
+
+### Interacción de los Componentes
+1. **Frontend (Componentes Cliente/Servidor):**
+   - Los componentes de lectura (`page.tsx`) son **Server Components**. Estos consultan directamente a la base de datos PostgreSQL a través de Prisma antes de enviar HTML al cliente, logrando tiempos de carga iniciales casi instantáneos (Zero JS en carga de lectura).
+   - Los formularios y botones interactivos son **Client Components**. Para realizar una acción (Ej. crear un cliente), el cliente invoca una función asíncrona importada directamente desde la carpeta `/actions` (Server Actions).
+
+2. **Capa de Lógica de Negocio (Server Actions):**
+   - Ubicados en `src/app/actions/`, estos archivos (marcados con `'use server'`) actúan como los controladores.
+   - Antes de ejecutar cualquier lógica, validan quién está haciendo la solicitud utilizando el wrapper de seguridad `requireRole(['ADMIN', 'GERENTE'])`. Esto se enlaza de forma nativa con **Supabase Auth** para verificar el token JWT de la sesión.
+   - Si la autenticación y el rol son correctos, el Server Action ejecuta el ORM de **Prisma** (`prisma.client.create(...)`) para mutar la base de datos.
+   - Finalmente, se invoca `revalidatePath('/ruta')` de Next.js, lo cual purga la memoria caché y actualiza la UI automáticamente sin requerir que el navegador haga un "refetch" de datos manual como en el viejo paradigma de React + Redux/Axios.
+
+### Integración de Almacenamiento (Supabase Storage)
+Para el Gestor Documental Técnico (DMS), los archivos binarios (PDFs, Planos) siguen un flujo de 2 partes:
+1. **Subida en el Borde:** El navegador del usuario sube el archivo *directamente* a los buckets de **Supabase Storage** a través del cliente Supabase del frontend, evadiendo pasar megabytes de datos por el servidor de Next.js.
+2. **Registro Relacional:** Una vez que Supabase confirma la subida y devuelve la URL del archivo, el cliente llama a un Server Action de Prisma para registrar el metadato del documento (Versión, Fecha, Autor, Carpeta y URL) asociado al ID del Proyecto correspondiente.
+
+---
+
 ## 🚀 Guía de Despliegue
 
 Este repositorio está preparado para integración y despliegue continuo (CI/CD) en plataformas nativas como **Vercel** o **Railway**.
