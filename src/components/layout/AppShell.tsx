@@ -3,7 +3,7 @@
 import { createSupabaseBrowserClient } from '@/lib/supabase';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { LogOut, User, LayoutDashboard, Package, Folders, Search, Menu, Activity, X } from 'lucide-react';
+import { LogOut, User, LayoutDashboard, Package, Folders, Search, Menu, Activity, X, Users } from 'lucide-react';
 import Link from 'next/link';
 import Notifications from './Notifications';
 import { useState } from 'react';
@@ -21,6 +21,7 @@ const ROLE_BADGES: Record<string, { label: string; className: string }> = {
 
 const NAV_LINKS = [
   { href: '/almacen',    label: 'Almacén',           icon: Package },
+  { href: '/clientes',   label: 'Clientes',          icon: Users },
   { href: '/proyectos',  label: 'Proyectos',          icon: Folders },
   { href: '/visor',      label: 'Centro de Comando',  icon: LayoutDashboard },
   { href: '/analiticas', label: 'Analíticas',          icon: Activity },
