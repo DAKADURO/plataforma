@@ -35,9 +35,11 @@ export default function UploadDocumentModal({
 
     try {
       // 1. Upload to Supabase Storage
+      // Use a sanitized filename to avoid "Invalid key" errors from special
+      // characters, spaces or non-ASCII glyphs (e.g. Chinese) in the original name.
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${file.name}`;
-      const filePath = `${projectId}/${fileName}`;
+      const safeFileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${projectId}/${safeFileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('documentos')
