@@ -4,6 +4,15 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { requireRole } from '@/lib/auth'
 
+type ClientInput = {
+  name: string
+  contact?: string
+  email?: string
+  phone?: string
+  rfc?: string
+  address?: string
+}
+
 export async function getClients() {
   return await prisma.client.findMany({
     include: {
@@ -15,9 +24,9 @@ export async function getClients() {
   })
 }
 
-export async function createClient(data: { name: string; contact?: string }) {
+export async function createClient(data: ClientInput) {
   try {
-    await requireRole(['ADMIN', 'GERENTE', 'TECNICO']) // Todos pueden crear
+    await requireRole(['ADMIN', 'GERENTE', 'TECNICO'])
     await prisma.client.create({ data })
     revalidatePath('/clientes')
     revalidatePath('/proyectos')
@@ -28,13 +37,10 @@ export async function createClient(data: { name: string; contact?: string }) {
   }
 }
 
-export async function updateClient(id: string, data: { name: string; contact?: string }) {
+export async function updateClient(id: string, data: ClientInput) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
-    await prisma.client.update({
-      where: { id },
-      data
-    })
+    await prisma.client.update({ where: { id }, data })
     revalidatePath('/clientes')
     revalidatePath('/proyectos')
     return { success: true }
@@ -47,9 +53,7 @@ export async function updateClient(id: string, data: { name: string; contact?: s
 export async function deleteClient(id: string) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
-    await prisma.client.delete({
-      where: { id }
-    })
+    await prisma.client.delete({ where: { id } })
     revalidatePath('/clientes')
     revalidatePath('/proyectos')
     return { success: true }
