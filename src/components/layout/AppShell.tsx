@@ -3,7 +3,7 @@
 import { createSupabaseBrowserClient } from '@/lib/supabase';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { LogOut, User, LayoutDashboard, Package, Folders, Search, Menu, Activity, X, Users } from 'lucide-react';
+import { LogOut, User, LayoutDashboard, Package, Folders, Search, Menu, Activity, X, Users, Shield } from 'lucide-react';
 import Link from 'next/link';
 import Notifications from './Notifications';
 import { useState } from 'react';
@@ -25,6 +25,7 @@ const NAV_LINKS = [
   { href: '/proyectos',  label: 'Proyectos',          icon: Folders },
   { href: '/visor',      label: 'Centro de Comando',  icon: LayoutDashboard },
   { href: '/analiticas', label: 'Analíticas',          icon: Activity },
+  { href: '/usuarios',   label: 'Usuarios',           icon: Shield, requiredRole: 'ADMIN' },
 ];
 
 export default function AppShell({ children, user }: { children: React.ReactNode; user: UserInfo }) {
@@ -42,7 +43,7 @@ export default function AppShell({ children, user }: { children: React.ReactNode
 
   const NavLinks = () => (
     <>
-      {NAV_LINKS.map(({ href, label, icon: Icon }) => {
+      {NAV_LINKS.filter(link => !link.requiredRole || link.requiredRole === user.role).map(({ href, label, icon: Icon }) => {
         const active = pathname.startsWith(href);
         return (
           <Link
