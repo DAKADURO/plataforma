@@ -41,6 +41,7 @@ model Project {
   name        String
   clientId    String
   client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  progress    Int           @default(0) // Auto-calculado como promedio de las tareas
   status      String        @default("NORMAL") // NORMAL, RIESGO, ATORADO
   blockReason String?       // Causa del "Atorado" para el Visor
   documents   Document[]
