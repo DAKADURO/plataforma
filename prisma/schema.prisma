@@ -12,7 +12,7 @@ datasource db {
 model User {
   id        String     @id @default(uuid())
   email     String     @unique
-  role      String     @default("TECNICO") // ADMIN, GERENTE, TECNICO
+  role      String     @default("PENDIENTE") // ADMIN, GERENTE, TECNICO, PENDIENTE
   logs      AuditLog[]
 }
 
