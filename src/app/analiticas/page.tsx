@@ -1,8 +1,10 @@
 import { getProjects } from '@/app/actions/projects';
 import { getProducts } from '@/app/actions/almacen';
+import { getClients } from '@/app/actions/projects';
 import DashboardCharts from '@/components/analiticas/DashboardCharts';
 import { requireRole } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import { prisma } from '@/lib/prisma';
 
 export default async function AnaliticasPage() {
   // Solo Administradores y Gerentes pueden ver las analíticas ejecutivas
@@ -12,8 +14,24 @@ export default async function AnaliticasPage() {
     redirect('/almacen');
   }
 
-  const projects = await getProjects();
-  const products = await getProducts();
+  const [projects, products, clients] = await Promise.all([
+    getProjects(),
+    getProducts(),
+    getClients(),
+  ]);
+
+  // Enrich projects with their document count
+  const projectsWithDocs = await prisma.project.findMany({
+    select: {
+      id: true,
+      documents: { select: { id: true } }
+    }
+  });
+  const docCountMap = Object.fromEntries(projectsWithDocs.map(p => [p.id, p.documents]));
+  const enrichedProjects = projects.map(p => ({
+    ...p,
+    documents: docCountMap[p.id] ?? [],
+  }));
 
   return (
     <div className="space-y-6">
@@ -22,7 +40,7 @@ export default async function AnaliticasPage() {
         <p className="text-slate-500 dark:text-slate-400">Visión global del rendimiento y estado de la empresa.</p>
       </header>
 
-      <DashboardCharts projects={projects} products={products} />
+      <DashboardCharts projects={enrichedProjects} products={products} clientCount={clients.length} />
     </div>
   );
 }

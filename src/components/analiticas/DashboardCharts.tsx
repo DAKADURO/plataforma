@@ -2,11 +2,10 @@
 
 import React, { useMemo } from 'react';
 import {
-  PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid
+  PieChart, Pie, Cell, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
 } from 'recharts';
-import Card from '@/components/ui/Card';
-import { TrendingUp, Package, Briefcase } from 'lucide-react';
+import { TrendingUp, Package, Briefcase, Users, FileText, AlertOctagon } from 'lucide-react';
 
 type Project = {
   id: string;
@@ -14,6 +13,7 @@ type Project = {
   progress: number;
   status: string;
   client: { name: string };
+  documents?: { id: string }[];
 };
 
 type Product = {
@@ -26,10 +26,53 @@ type Product = {
 const PIE_COLORS: Record<string, string> = {
   NORMAL:  '#10b981',
   RIESGO:  '#f59e0b',
-  ATORADO: '#f43f5e',
+  ATORADO: '#ef4444',
 };
 
-export default function DashboardCharts({ projects, products }: { projects: Project[], products: Product[] }) {
+// ─── Custom Tooltip (glassmorphism dark) ───────────────────────────
+function CustomTooltip({ active, payload, label }: {
+  active?: boolean;
+  payload?: Array<{ value: number; name: string; color?: string }>;
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl px-4 py-3 shadow-2xl text-sm min-w-[130px]">
+      {label && <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">{label}</p>}
+      {payload.map((p, i) => (
+        <div key={i} className="flex items-center justify-between gap-4">
+          <span className="text-slate-300 font-medium">{p.name}</span>
+          <span className="text-white font-black">{p.value}{p.name === 'Progreso' ? '%' : ''}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Donut center label ──────────────────────────────────────────
+function DonutCenterLabel({ cx, cy, total }: { cx?: number; cy?: number; total: number }) {
+  return (
+    <g>
+      <text x={cx} y={cy! - 8} textAnchor="middle" className="fill-white" fontSize={28} fontWeight={900}>
+        {total}
+      </text>
+      <text x={cx} y={cy! + 16} textAnchor="middle" fill="#64748b" fontSize={11} fontWeight={600} letterSpacing={1.5}>
+        PROYECTOS
+      </text>
+    </g>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────
+export default function DashboardCharts({
+  projects,
+  products,
+  clientCount,
+}: {
+  projects: Project[];
+  products: Product[];
+  clientCount: number;
+}) {
   const statusData = useMemo(() => {
     const c = { NORMAL: 0, RIESGO: 0, ATORADO: 0 };
     projects.forEach(p => { if (p.status in c) c[p.status as keyof typeof c]++; });
@@ -42,119 +85,214 @@ export default function DashboardCharts({ projects, products }: { projects: Proj
 
   const progressData = useMemo(() =>
     projects.map(p => ({
-      name: p.name.length > 14 ? p.name.slice(0, 14) + '…' : p.name,
+      name: p.name.length > 12 ? p.name.slice(0, 12) + '…' : p.name,
       Progreso: p.progress,
       fill: PIE_COLORS[p.status] ?? '#6366f1',
     })), [projects]);
 
-  const totalProjects = projects.length;
-  const lowStock = products.filter(p => p.stock <= p.minStock).length;
-  const avgProgress = totalProjects > 0
-    ? Math.round(projects.reduce((a, p) => a + p.progress, 0) / totalProjects)
-    : 0;
+  const totalProjects  = projects.length;
+  const lowStock       = products.filter(p => p.stock <= p.minStock).length;
+  const atoradoCount   = projects.filter(p => p.status === 'ATORADO').length;
+  const avgProgress    = totalProjects > 0
+    ? Math.round(projects.reduce((a, p) => a + p.progress, 0) / totalProjects) : 0;
+  const totalDocuments = projects.reduce((a, p) => a + (p.documents?.length ?? 0), 0);
 
   const kpis = [
-    { label: 'Proyectos Activos',  value: totalProjects, icon: Briefcase, color: '#6366f1', bg: 'rgba(99,102,241,0.08)' },
-    { label: 'Progreso Promedio',  value: `${avgProgress}%`, icon: TrendingUp,  color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
-    { label: 'Alertas de Stock',   value: lowStock,      icon: Package,    color: '#f43f5e', bg: 'rgba(244,63,94,0.08)' },
+    {
+      label: 'Proyectos Activos',
+      value: totalProjects,
+      icon: Briefcase,
+      accent: '#6366f1',
+      bg: 'rgba(99,102,241,0.12)',
+      border: 'border-indigo-500/20',
+      sub: `${atoradoCount} atorado${atoradoCount !== 1 ? 's' : ''}`,
+    },
+    {
+      label: 'Progreso Promedio',
+      value: `${avgProgress}%`,
+      icon: TrendingUp,
+      accent: '#10b981',
+      bg: 'rgba(16,185,129,0.12)',
+      border: 'border-emerald-500/20',
+      sub: 'del total de tareas',
+    },
+    {
+      label: 'Alertas de Stock',
+      value: lowStock,
+      icon: Package,
+      accent: '#ef4444',
+      bg: 'rgba(239,68,68,0.12)',
+      border: 'border-red-500/20',
+      sub: `${products.length} productos total`,
+    },
+    {
+      label: 'Clientes Activos',
+      value: clientCount,
+      icon: Users,
+      accent: '#f59e0b',
+      bg: 'rgba(245,158,11,0.12)',
+      border: 'border-amber-500/20',
+      sub: 'en portafolio',
+    },
+    {
+      label: 'Proyectos en Riesgo',
+      value: projects.filter(p => p.status === 'RIESGO').length,
+      icon: AlertOctagon,
+      accent: '#f97316',
+      bg: 'rgba(249,115,22,0.12)',
+      border: 'border-orange-500/20',
+      sub: 'requieren atención',
+    },
+    {
+      label: 'Documentos Subidos',
+      value: totalDocuments,
+      icon: FileText,
+      accent: '#38bdf8',
+      bg: 'rgba(56,189,248,0.12)',
+      border: 'border-sky-500/20',
+      sub: 'en el DMS',
+    },
   ];
-
-  const tooltipStyle = {
-    backgroundColor: 'var(--bg-surface)',
-    border: '1px solid var(--border)',
-    borderRadius: '10px',
-    color: 'var(--text-primary)',
-    boxShadow: 'var(--shadow-md)',
-    fontSize: '13px',
-  };
 
   return (
     <div className="space-y-8 animate-fade-in">
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* ── KPI Row ── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         {kpis.map(kpi => {
           const Icon = kpi.icon;
           return (
-            <Card key={kpi.label} className="p-5">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: kpi.bg }}>
-                  <Icon className="w-5 h-5" style={{ color: kpi.color }} />
-                </div>
-                <div>
-                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{kpi.label}</p>
-                  <p className="text-2xl font-bold mt-0.5" style={{ color: 'var(--text-primary)' }}>{kpi.value}</p>
-                </div>
+            <div
+              key={kpi.label}
+              className={`relative flex flex-col justify-between bg-[#151515] backdrop-blur-md rounded-2xl p-5
+                border ${kpi.border} shadow-lg overflow-hidden group hover:border-opacity-50 transition-all`}
+            >
+              {/* faint glow orb */}
+              <div
+                className="absolute -top-6 -right-6 w-20 h-20 rounded-full blur-2xl opacity-30 pointer-events-none transition-opacity group-hover:opacity-50"
+                style={{ background: kpi.accent }}
+              />
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 shrink-0"
+                style={{ background: kpi.bg }}
+              >
+                <Icon className="w-5 h-5" style={{ color: kpi.accent }} />
               </div>
-            </Card>
+              <div>
+                <p className="text-3xl font-black text-white tabular-nums leading-none mb-1">{kpi.value}</p>
+                <p className="text-xs font-bold text-slate-400 leading-snug">{kpi.label}</p>
+                <p className="text-[10px] text-slate-600 mt-0.5">{kpi.sub}</p>
+              </div>
+            </div>
           );
         })}
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ── Charts Row ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
-        {/* Pie — Estado de Proyectos */}
-        <Card className="p-6">
-          <h3 className="text-sm font-semibold mb-6" style={{ color: 'var(--text-secondary)' }}>
-            DISTRIBUCIÓN DE ESTADOS
-          </h3>
+        {/* Donut — Estado de Proyectos (2 cols) */}
+        <div className="lg:col-span-2 bg-[#151515] border border-white/5 rounded-2xl p-6 shadow-lg">
+          <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-6">
+            Distribución de Estados
+          </p>
           {statusData.length === 0 ? (
-            <div className="h-[220px] flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>
+            <div className="h-[220px] flex items-center justify-center text-sm text-slate-600">
               No hay proyectos aún.
             </div>
           ) : (
-            <div className="h-[220px]">
+            <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={statusData} cx="40%" cy="50%" innerRadius={60} outerRadius={85}
-                    paddingAngle={4} dataKey="value" stroke="none">
+                  <Pie
+                    data={statusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={62}
+                    outerRadius={88}
+                    paddingAngle={3}
+                    dataKey="value"
+                    startAngle={90}
+                    endAngle={-270}
+                  >
                     {statusData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
+                      <Cell key={i} fill={entry.color} stroke="none" />
                     ))}
                   </Pie>
-                  <RechartsTooltip contentStyle={tooltipStyle} />
+                  <RechartsTooltip content={<CustomTooltip />} />
+                  {statusData.length > 0 && (
+                    <text>
+                      {/* Centered label rendered via customized label prop */}
+                    </text>
+                  )}
                 </PieChart>
               </ResponsiveContainer>
             </div>
           )}
+
+          {/* Total count centered visually below chart */}
+          <div className="flex justify-center -mt-[150px] mb-[90px] pointer-events-none">
+            <div className="text-center">
+              <p className="text-3xl font-black text-white">{totalProjects}</p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total</p>
+            </div>
+          </div>
+
           {/* Legend */}
-          <div className="flex gap-5 mt-2 flex-wrap">
+          <div className="flex flex-col gap-2 mt-2">
             {statusData.map(d => (
-              <div key={d.name} className="flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: d.color }} />
-                {d.name} ({d.value})
+              <div key={d.name} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.color }} />
+                  <span className="text-slate-400 font-medium">{d.name}</span>
+                </div>
+                <span className="font-black text-white">{d.value}</span>
               </div>
             ))}
           </div>
-        </Card>
+        </div>
 
-        {/* Bar — Avance */}
-        <Card className="p-6">
-          <h3 className="text-sm font-semibold mb-6" style={{ color: 'var(--text-secondary)' }}>
-            AVANCE POR PROYECTO
-          </h3>
-          <div className="h-[260px]">
+        {/* Bar — Avance por Proyecto (3 cols) */}
+        <div className="lg:col-span-3 bg-[#151515] border border-white/5 rounded-2xl p-6 shadow-lg">
+          <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-6">
+            Avance por Proyecto (%)
+          </p>
+          <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={progressData} margin={{ top: 0, right: 10, left: -25, bottom: 40 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <BarChart data={progressData} margin={{ top: 0, right: 8, left: -22, bottom: 50 }} barSize={24}>
+                <defs>
+                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#6366f1" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#6366f1" stopOpacity={0.4} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#334155"
+                  vertical={false}
+                  strokeOpacity={0.5}
+                />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+                  tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
                   axisLine={false}
                   tickLine={false}
-                  angle={-30}
+                  angle={-35}
                   textAnchor="end"
+                  interval={0}
                 />
                 <YAxis
                   domain={[0, 100]}
-                  tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+                  tick={{ fontSize: 11, fill: '#64748b' }}
                   axisLine={false}
                   tickLine={false}
+                  tickFormatter={(v) => `${v}%`}
                 />
-                <RechartsTooltip contentStyle={tooltipStyle} cursor={{ fill: 'var(--bg-surface-alt)' }} />
-                <Bar dataKey="Progreso" radius={[4, 4, 0, 0]}>
+                <RechartsTooltip
+                  content={<CustomTooltip />}
+                  cursor={{ fill: 'rgba(255,255,255,0.04)', radius: 8 }}
+                />
+                <Bar dataKey="Progreso" radius={[6, 6, 0, 0]}>
                   {progressData.map((entry, i) => (
                     <Cell key={i} fill={entry.fill} />
                   ))}
@@ -162,7 +300,7 @@ export default function DashboardCharts({ projects, products }: { projects: Proj
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </Card>
+        </div>
 
       </div>
     </div>
