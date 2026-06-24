@@ -28,3 +28,20 @@ export async function updateUserRole(userId: string, newRole: string) {
     return { success: false, error: message }
   }
 }
+
+export async function registerUserInDb(email: string) {
+  try {
+    const existing = await prisma.user.findUnique({ where: { email } })
+    if (!existing) {
+      await prisma.user.create({
+        data: {
+          email,
+          role: 'PENDIENTE'
+        }
+      })
+    }
+    return { success: true }
+  } catch (error) {
+    return { success: false }
+  }
+}

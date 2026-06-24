@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, LogIn, Shield } from 'lucide-react';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -119,6 +120,15 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+        </div>
+
+        <div className="mt-6 text-center border-t border-slate-800/50 pt-6">
+          <p className="text-sm text-slate-400">
+            ¿No tienes cuenta?{' '}
+            <Link href="/registro" className="text-blue-400 hover:text-blue-300 font-semibold transition-colors">
+              Solicita acceso aquí
+            </Link>
+          </p>
         </div>
 
         <p className="text-center text-slate-600 text-xs mt-6">
