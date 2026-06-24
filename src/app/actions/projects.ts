@@ -63,7 +63,15 @@ export async function createProject(data: { name: string; clientId: string }) {
   }
 }
 
-export async function updateProjectStatus(data: { id: string, progress: number, status: string, blockReason?: string | null }) {
+export async function updateProjectStatus(data: { 
+  id: string, 
+  progress: number, 
+  status: string, 
+  blockReason?: string | null,
+  phase?: string,
+  startDate?: Date | null,
+  endDate?: Date | null
+}) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
     await prisma.project.update({
@@ -71,7 +79,10 @@ export async function updateProjectStatus(data: { id: string, progress: number, 
       data: {
         progress: data.progress,
         status: data.status,
-        blockReason: data.status === 'ATORADO' ? data.blockReason : null
+        blockReason: data.status === 'ATORADO' ? data.blockReason : null,
+        phase: data.phase,
+        startDate: data.startDate,
+        endDate: data.endDate
       }
     })
     revalidatePath('/proyectos')

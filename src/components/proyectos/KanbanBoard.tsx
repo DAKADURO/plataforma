@@ -13,6 +13,7 @@ type Project = {
   name: string;
   progress: number;
   status: string;
+  phase: string;
   client: { name: string };
 };
 
@@ -87,10 +88,15 @@ export default function KanbanBoard({ projects, clients, role }: { projects: Pro
                         <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors opacity-0 group-hover:opacity-100" />
                       </div>
                       
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5" />
-                        {project.client.name}
-                      </p>
+                      <div className="flex items-center gap-2 mb-4">
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5" />
+                          {project.client.name}
+                        </p>
+                        <span className="text-[10px] font-bold bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-500/20 truncate">
+                          {project.phase}
+                        </span>
+                      </div>
 
                       <div className="space-y-1.5">
                         <div className="flex justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">

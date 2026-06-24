@@ -37,6 +37,9 @@ type Project = {
   progress: number;
   status: string;
   blockReason: string | null;
+  phase: string;
+  startDate: Date | null;
+  endDate: Date | null;
   client: { name: string };
   inventory: InventoryItem[];
   documents: ProjectDocument[];
@@ -46,6 +49,9 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
   const [progress, setProgress] = useState(project.progress);
   const [status, setStatus] = useState(project.status);
   const [blockReason, setBlockReason] = useState(project.blockReason || '');
+  const [phase, setPhase] = useState(project.phase || 'PLANIFICACION');
+  const [startDate, setStartDate] = useState(project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '');
+  const [endDate, setEndDate] = useState(project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '');
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isDocumentModalOpen, setDocumentModalOpen] = useState(false);
@@ -58,7 +64,21 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
   const handleSaveStatus = async () => {
     setLoading(true);
     setSaved(false);
-    await updateProjectStatus({ id: project.id, progress, status, blockReason });
+    
+    // Convert date strings back to Date objects if they exist
+    const parsedStartDate = startDate ? new Date(startDate) : null;
+    const parsedEndDate = endDate ? new Date(endDate) : null;
+    
+    await updateProjectStatus({ 
+      id: project.id, 
+      progress, 
+      status, 
+      blockReason,
+      phase,
+      startDate: parsedStartDate,
+      endDate: parsedEndDate
+    });
+    
     setLoading(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -82,6 +102,45 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4 bg-slate-50 dark:bg-white/5 p-4 rounded-xl border border-slate-100 dark:border-white/10">
+              <div className="col-span-2">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Fase del Proyecto</label>
+                <select 
+                  value={phase}
+                  onChange={(e) => setPhase(e.target.value)}
+                  disabled={role === 'TECNICO'}
+                  className="w-full bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
+                >
+                  <option value="PLANIFICACION">Planificación</option>
+                  <option value="COMPRAS/INGENIERIA">Compras / Ingeniería</option>
+                  <option value="EJECUCION">Ejecución</option>
+                  <option value="CIERRE">Cierre</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Fecha de Inicio</label>
+                <input 
+                  type="date" 
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  disabled={role === 'TECNICO'}
+                  className="w-full bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Fecha Final Estimada</label>
+                <input 
+                  type="date" 
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  disabled={role === 'TECNICO'}
+                  className="w-full bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="flex justify-between text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
                 <span>Progreso del Proyecto</span>
@@ -150,7 +209,7 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
               {role !== 'TECNICO' && (
                 <button
                   onClick={handleSaveStatus}
-                  disabled={loading || (status === project.status && progress === project.progress && blockReason === (project.blockReason || ''))}
+                  disabled={loading}
                   className="w-full flex justify-center items-center gap-2 rounded-xl border border-transparent bg-slate-900 py-3 px-4 text-sm font-bold text-white shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {loading ? 'Guardando...' : (

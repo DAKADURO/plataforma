@@ -44,6 +44,9 @@ model Project {
   progress    Int         @default(0) // 0-100
   status      String      @default("NORMAL") // NORMAL, RIESGO, ATORADO
   blockReason String?     // Causa del "Atorado" para el Visor
+  phase       String      @default("PLANIFICACION") // PLANIFICACION, INGENIERIA, EJECUCION, CIERRE
+  startDate   DateTime?
+  endDate     DateTime?
   documents   Document[]
   inventory   Inventory[]
 }
