@@ -1,6 +1,6 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/shield.svg" width="80" alt="Logo">
-  <h1 align="center">Menrit Sears - Plataforma Operativa B2B</h1>
+  <h1 align="center">Memrit Sears - Plataforma Operativa B2B</h1>
   
   <p align="center">
     <strong>Sistema integral de Control Operativo, Gestor Documental (DMS) y Centro de Comando Ejecutivo.</strong>

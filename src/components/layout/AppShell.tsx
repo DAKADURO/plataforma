@@ -87,7 +87,7 @@ export default function AppShell({ children, user }: { children: React.ReactNode
               <span className="text-white font-bold text-sm leading-none">M</span>
             </div>
             <span className="hidden sm:block text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-              Menrit Sears
+              Memrit Sears
             </span>
           </Link>
 
