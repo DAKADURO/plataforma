@@ -13,7 +13,11 @@ type ClientInput = {
   address?: string
 }
 
+// [SEC-FIX #1] Proteger lectura del directorio de clientes
+const ACTIVE_ROLES = ['ADMIN', 'GERENTE', 'TECNICO']
+
 export async function getClients() {
+  await requireRole(ACTIVE_ROLES)
   return await prisma.client.findMany({
     include: {
       _count: {
@@ -32,8 +36,11 @@ export async function createClient(data: ClientInput) {
     revalidatePath('/proyectos')
     return { success: true }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error desconocido'
-    return { success: false, error: message }
+    // [SEC-FIX #5] Sanitizar errores internos de Prisma/BD
+    if (error instanceof Error && error.message.includes('permisos')) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'No se pudo completar la operación. Intente de nuevo.' }
   }
 }
 
@@ -45,8 +52,11 @@ export async function updateClient(id: string, data: ClientInput) {
     revalidatePath('/proyectos')
     return { success: true }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error desconocido'
-    return { success: false, error: message }
+    // [SEC-FIX #5] Sanitizar errores internos de Prisma/BD
+    if (error instanceof Error && error.message.includes('permisos')) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'No se pudo completar la operación. Intente de nuevo.' }
   }
 }
 
@@ -58,7 +68,10 @@ export async function deleteClient(id: string) {
     revalidatePath('/proyectos')
     return { success: true }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error desconocido'
-    return { success: false, error: message }
+    // [SEC-FIX #5] Sanitizar errores internos de Prisma/BD
+    if (error instanceof Error && error.message.includes('permisos')) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'No se pudo completar la operación. Intente de nuevo.' }
   }
 }

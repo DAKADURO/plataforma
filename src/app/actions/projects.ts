@@ -6,7 +6,11 @@ import { requireRole } from '@/lib/auth'
 import { createClientSchema, createProjectSchema } from '@/lib/validations'
 import { z } from 'zod'
 
+// [SEC-FIX #1] Proteger lecturas: usuarios con rol PENDIENTE no tienen acceso a datos
+const ACTIVE_ROLES = ['ADMIN', 'GERENTE', 'TECNICO']
+
 export async function getProjects() {
+  await requireRole(ACTIVE_ROLES)
   return await prisma.project.findMany({
     include: {
       client: true,
@@ -19,6 +23,8 @@ export async function getProjects() {
 }
 
 export async function getProjectById(id: string) {
+  // [SEC-FIX #1] Solo roles activos pueden leer el detalle de un proyecto
+  await requireRole(ACTIVE_ROLES)
   return await prisma.project.findUnique({
     where: { id },
     include: {
@@ -42,6 +48,8 @@ export async function getProjectById(id: string) {
 }
 
 export async function getClients() {
+  // [SEC-FIX #1] Solo roles activos pueden leer el directorio de clientes
+  await requireRole(ACTIVE_ROLES)
   return await prisma.client.findMany({
     orderBy: { name: 'asc' }
   })
@@ -57,10 +65,13 @@ export async function createClient(data: z.infer<typeof createClientSchema>) {
     return { success: true }
   } catch (error) {
     if (error instanceof z.ZodError) {
+      return { success: false, error: 'Datos del formulario inválidos.' }
+    }
+    // [SEC-FIX #5] Exponer solo errores de autorización; sanitizar el resto
+    if (error instanceof Error && error.message.includes('permisos')) {
       return { success: false, error: error.message }
     }
-    const message = error instanceof Error ? error.message : 'Error desconocido'
-    return { success: false, error: message }
+    return { success: false, error: 'No se pudo completar la operación. Intente de nuevo.' }
   }
 }
 
@@ -73,10 +84,13 @@ export async function createProject(data: z.infer<typeof createProjectSchema>) {
     return { success: true }
   } catch (error) {
     if (error instanceof z.ZodError) {
+      return { success: false, error: 'Datos del formulario inválidos.' }
+    }
+    // [SEC-FIX #5] Sanitizar errores internos de Prisma/BD
+    if (error instanceof Error && error.message.includes('permisos')) {
       return { success: false, error: error.message }
     }
-    const message = error instanceof Error ? error.message : 'Error desconocido'
-    return { success: false, error: message }
+    return { success: false, error: 'No se pudo completar la operación. Intente de nuevo.' }
   }
 }
 
@@ -98,8 +112,11 @@ export async function updateProjectStatus(data: {
     revalidatePath(`/proyectos/${data.id}`)
     return { success: true }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error desconocido'
-    return { success: false, error: message }
+    // [SEC-FIX #5] Sanitizar errores internos de Prisma/BD
+    if (error instanceof Error && error.message.includes('permisos')) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'No se pudo actualizar el estado. Intente de nuevo.' }
   }
 }
 

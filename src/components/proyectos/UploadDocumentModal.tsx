@@ -53,6 +53,8 @@ export default function UploadDocumentModal({
         .getPublicUrl(filePath);
 
       // 3. Save to Prisma
+      // [SEC-FIX #3] uploadedBy ya NO se envía desde el cliente.
+      // La identidad del autor se resuelve en el servidor desde la sesión JWT.
       const res = await addDocumentVersion({
         projectId,
         name,
@@ -60,7 +62,6 @@ export default function UploadDocumentModal({
         url: publicUrl,
         folder,
         notes,
-        uploadedBy: 'Usuario Actual' // In a real app, this would be the logged in user ID
       });
 
       if (!res.success) throw new Error(res.error);

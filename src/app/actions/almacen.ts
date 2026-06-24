@@ -4,7 +4,12 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { requireRole } from '@/lib/auth'
 
+// [SEC-FIX #1] Roles activos del sistema (excluye PENDIENTE)
+const ACTIVE_ROLES = ['ADMIN', 'GERENTE', 'TECNICO']
+
 export async function getProducts(category?: string) {
+  // [SEC-FIX #1] Proteger lectura de inventario contra usuarios PENDIENTE
+  await requireRole(ACTIVE_ROLES)
   const products = await prisma.product.findMany({
     where: category && category !== 'Todas' ? { category } : undefined,
     include: {
@@ -30,6 +35,8 @@ export async function getProducts(category?: string) {
 }
 
 export async function getCategories() {
+  // [SEC-FIX #1] Proteger lectura de categorías
+  await requireRole(ACTIVE_ROLES)
   const categories = await prisma.product.findMany({
     select: { category: true },
     distinct: ['category']
@@ -44,13 +51,18 @@ export async function createProduct(data: { sku: string, name: string, category:
     revalidatePath('/almacen')
     return { success: true }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error desconocido'
-    return { success: false, error: message }
+    // [SEC-FIX #5] Sanitizar errores internos de Prisma
+    if (error instanceof Error && error.message.includes('permisos')) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'No se pudo completar la operación. Intente de nuevo.' }
   }
 }
 
 export async function createMovement(data: { productId: string, quantity: number, type: 'ENTRADA' | 'SALIDA', projectId?: string }) {
   try {
+    // [SEC-FIX #2] createMovement estaba DESPROTEGIDA — se requiere rol activo
+    await requireRole(ACTIVE_ROLES)
     await prisma.inventory.create({
       data: {
         productId: data.productId,
@@ -63,7 +75,10 @@ export async function createMovement(data: { productId: string, quantity: number
     if (data.projectId) revalidatePath(`/proyectos/${data.projectId}`)
     return { success: true }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error desconocido'
-    return { success: false, error: message }
+    // [SEC-FIX #5] Sanitizar errores internos de Prisma
+    if (error instanceof Error && error.message.includes('permisos')) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'No se pudo registrar el movimiento. Intente de nuevo.' }
   }
 }
