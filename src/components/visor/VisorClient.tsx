@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getProjects } from '@/app/actions/projects';
-import { AlertTriangle, Clock, Activity, CheckCircle2, Factory, ListTodo, ShieldAlert, Radio } from 'lucide-react';
+import { AlertTriangle, Activity, CheckCircle2, Factory, ListTodo, ShieldAlert, Radio, AlertOctagon } from 'lucide-react';
 
 type ProjectTask = {
   status: string;
@@ -38,153 +38,177 @@ export default function VisorClient({ initialProjects }: { initialProjects: Proj
   }, []);
 
   return (
-    // Immersive Kiosk Background: Radial Gradient
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#050b14] to-black text-slate-50 p-6 md:p-10 flex flex-col font-sans overflow-x-hidden selection:bg-blue-500/30">
+    <div className="min-h-screen bg-[#020817] relative overflow-hidden font-sans selection:bg-blue-500/30">
       
-      {/* FUTURISTIC HEADER */}
-      <header className="flex flex-col md:flex-row justify-between items-center md:items-end mb-10 pb-6 border-b border-white/5 relative">
-        {/* Glow behind header */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-blue-500/10 blur-[100px] pointer-events-none rounded-full"></div>
+      {/* ── IMMERSIVE BACKGROUND ELEMENTS ── */}
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-900/20 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-cyan-900/10 blur-[150px] pointer-events-none" />
+      <div className="absolute top-[20%] right-[20%] w-[30%] h-[30%] rounded-full bg-purple-900/10 blur-[100px] pointer-events-none" />
+      
+      {/* Grid Pattern Overlay */}
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none"></div>
+
+      <div className="relative z-10 p-6 md:p-10 max-w-screen-3xl mx-auto flex flex-col min-h-screen">
         
-        <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left mb-6 md:mb-0">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="relative flex h-5 w-5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-5 w-5 bg-blue-500 border-2 border-blue-900 items-center justify-center">
-                <Radio className="w-3 h-3 text-white" />
-              </span>
+        {/* ── HEADER ── */}
+        <header className="flex flex-col md:flex-row justify-between items-center md:items-end mb-12 pb-6 border-b border-white/10">
+          <div className="flex flex-col items-center md:items-start text-center md:text-left mb-6 md:mb-0">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="relative flex h-6 w-6">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-60"></span>
+                <span className="relative flex items-center justify-center rounded-full h-6 w-6 bg-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.6)]">
+                  <Radio className="w-3.5 h-3.5 text-white" />
+                </span>
+              </div>
+              <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-white drop-shadow-md">
+                CENTRO DE COMANDO
+              </h1>
             </div>
-            <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400">
-              CENTRO DE COMANDO
-            </h1>
+            <p className="text-lg text-cyan-400/90 font-bold tracking-[0.2em] uppercase ml-1 drop-shadow-sm">
+              Monitoreo Operativo Global
+            </p>
           </div>
-          <p className="text-xl text-blue-400/80 font-semibold tracking-widest uppercase">Monitoreo Operativo en Tiempo Real</p>
-        </div>
-        
-        <div className="relative z-10 flex flex-col items-center md:items-end bg-slate-900/50 border border-slate-800/80 px-6 py-3 rounded-2xl backdrop-blur-xl shadow-2xl">
-          <p className="text-4xl font-black text-white font-mono tracking-tight tabular-nums mb-1">
-            {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          </p>
-          <div className="flex items-center gap-2 text-sm font-bold text-emerald-400 uppercase tracking-widest">
-            <CheckCircle2 className="w-4 h-4" /> 
-            <span>Sincronizado</span>
+          
+          <div className="flex flex-col items-center md:items-end bg-black/40 border border-white/10 px-6 py-4 rounded-2xl backdrop-blur-xl shadow-2xl relative overflow-hidden group">
+            {/* Glossy reflection */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            <p className="text-3xl md:text-4xl font-black text-white font-mono tracking-tight tabular-nums mb-1">
+              {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </p>
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+              <CheckCircle2 className="w-3.5 h-3.5" /> 
+              <span>Sincronizado</span>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="flex-1 relative z-10">
-        {projects.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[60vh] bg-slate-900/30 backdrop-blur-md rounded-3xl border border-slate-800/50 shadow-2xl">
-            <Activity className="w-20 h-20 text-slate-700 mb-6" />
-            <p className="text-3xl text-slate-500 font-bold tracking-tight">Sin operaciones activas</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 auto-rows-max">
-            {/* Sort: Atorado first, Riesgo second, Normal last */}
-            {projects.sort((a, b) => {
-              const order = { ATORADO: 0, RIESGO: 1, NORMAL: 2 };
-              return (order[a.status as keyof typeof order] ?? 3) - (order[b.status as keyof typeof order] ?? 3);
-            }).map(project => {
-              
-              const isAtorado = project.status === 'ATORADO';
-              const isRiesgo = project.status === 'RIESGO';
-              
-              // Colors based on status
-              const borderStyle = isAtorado 
-                ? 'border-red-500/80 shadow-[0_0_30px_rgba(239,68,68,0.25)]' 
-                : isRiesgo 
-                  ? 'border-amber-500/60 shadow-[0_0_25px_rgba(245,158,11,0.15)]' 
-                  : 'border-slate-700/50 shadow-2xl hover:border-blue-500/30 transition-colors';
-              
-              const bgStyle = isAtorado ? 'bg-red-950/20' : isRiesgo ? 'bg-amber-950/10' : 'bg-slate-900/60';
-              const progressGradient = isAtorado 
-                ? 'bg-gradient-to-r from-red-600 to-rose-400' 
-                : isRiesgo 
-                  ? 'bg-gradient-to-r from-amber-600 to-yellow-400' 
-                  : 'bg-gradient-to-r from-blue-600 to-cyan-400 shadow-[0_0_15px_rgba(56,189,248,0.4)]';
+        {/* ── DASHBOARD GRID ── */}
+        <main className="flex-1">
+          {projects.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-[50vh] bg-white/5 backdrop-blur-xl rounded-[2rem] border border-white/10 shadow-2xl">
+              <Activity className="w-24 h-24 text-white/20 mb-6" />
+              <p className="text-3xl text-white/40 font-bold tracking-tight">Sin operaciones activas</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8 auto-rows-max">
+              {projects.sort((a, b) => {
+                const order = { ATORADO: 0, RIESGO: 1, NORMAL: 2 };
+                return (order[a.status as keyof typeof order] ?? 3) - (order[b.status as keyof typeof order] ?? 3);
+              }).map(project => {
+                
+                const isAtorado = project.status === 'ATORADO';
+                const isRiesgo = project.status === 'RIESGO';
+                
+                // --- Glassmorphism Styling Logic ---
+                const baseCardStyle = "relative flex flex-col justify-between p-8 rounded-[2rem] backdrop-blur-2xl border transition-all duration-500 hover:-translate-y-1 overflow-hidden group";
+                
+                const borderStyle = isAtorado 
+                  ? 'border-red-500/50 shadow-[0_8px_32px_rgba(239,68,68,0.25)] hover:shadow-[0_8px_40px_rgba(239,68,68,0.4)]' 
+                  : isRiesgo 
+                    ? 'border-amber-500/40 shadow-[0_8px_32px_rgba(245,158,11,0.15)] hover:shadow-[0_8px_40px_rgba(245,158,11,0.3)]' 
+                    : 'border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:border-cyan-500/30 hover:shadow-[0_8px_40px_rgba(6,182,212,0.15)]';
+                
+                const bgStyle = isAtorado 
+                  ? 'bg-gradient-to-br from-red-950/40 to-black/60' 
+                  : isRiesgo 
+                    ? 'bg-gradient-to-br from-amber-950/30 to-black/60' 
+                    : 'bg-gradient-to-br from-white/[0.03] to-black/40';
 
-              // Task summary
-              const totalTasks = project.tasks?.length || 0;
-              const pendingTasks = project.tasks?.filter(t => t.status !== 'COMPLETADA').length || 0;
+                const progressGradient = isAtorado 
+                  ? 'bg-gradient-to-r from-red-600 to-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.5)]' 
+                  : isRiesgo 
+                    ? 'bg-gradient-to-r from-amber-500 to-yellow-300 shadow-[0_0_15px_rgba(253,224,71,0.5)]' 
+                    : 'bg-gradient-to-r from-cyan-600 to-blue-400 shadow-[0_0_15px_rgba(56,189,248,0.5)]';
 
-              return (
-                <div 
-                  key={project.id} 
-                  className={`relative flex flex-col justify-between p-7 rounded-[2rem] backdrop-blur-xl border ${borderStyle} ${bgStyle} overflow-hidden group`}
-                >
-                  {/* Background Pulse for ATORADO */}
-                  {isAtorado && (
-                    <div className="absolute inset-0 bg-red-500/5 animate-pulse pointer-events-none" />
-                  )}
+                const totalTasks = project.tasks?.length || 0;
+                const pendingTasks = project.tasks?.filter(t => t.status !== 'COMPLETADA').length || 0;
 
-                  {/* Header: Name and Alert Icon */}
-                  <div className="relative z-10 mb-8">
-                    <div className="flex justify-between items-start gap-4 mb-4">
-                      <h3 className="text-2xl font-black text-white leading-tight tracking-tight line-clamp-2">
-                        {project.name}
-                      </h3>
-                      {isAtorado ? (
-                        <div className="bg-red-500/20 p-2 rounded-xl shrink-0 border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.4)]">
-                          <ShieldAlert className="w-7 h-7 text-red-500 animate-pulse" />
+                return (
+                  <div key={project.id} className={`${baseCardStyle} ${borderStyle} ${bgStyle}`}>
+                    
+                    {/* Glass Reflection Highlight */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+
+                    {/* Pulse Effect for Critical Status */}
+                    {isAtorado && (
+                      <div className="absolute inset-0 bg-red-500/10 animate-pulse pointer-events-none mix-blend-screen" />
+                    )}
+
+                    {/* ── CARD HEADER ── */}
+                    <div className="relative z-10 mb-8">
+                      <div className="flex justify-between items-start gap-4 mb-5">
+                        <h3 className="text-2xl font-black text-white leading-tight tracking-tight drop-shadow-sm line-clamp-2">
+                          {project.name}
+                        </h3>
+                        {isAtorado ? (
+                          <div className="bg-red-500/10 p-2.5 rounded-2xl shrink-0 border border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.4)] backdrop-blur-md">
+                            <AlertOctagon className="w-8 h-8 text-red-500 animate-[pulse_1s_ease-in-out_infinite]" />
+                          </div>
+                        ) : isRiesgo ? (
+                          <div className="bg-amber-500/10 p-2.5 rounded-2xl shrink-0 border border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.2)] backdrop-blur-md">
+                            <AlertTriangle className="w-8 h-8 text-amber-400" />
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {/* Info Pills */}
+                      <div className="flex flex-wrap gap-2.5">
+                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-black/40 border border-white/5 text-xs font-bold text-slate-300 backdrop-blur-sm shadow-inner">
+                          <Factory className="w-3.5 h-3.5 text-cyan-400" />
+                          <span className="truncate max-w-[140px]">{project.client.name}</span>
                         </div>
-                      ) : isRiesgo ? (
-                        <div className="bg-amber-500/10 p-2 rounded-xl shrink-0 border border-amber-500/20">
-                          <AlertTriangle className="w-7 h-7 text-amber-500" />
+                        
+                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-black/40 border border-white/5 text-xs font-bold text-slate-300 backdrop-blur-sm shadow-inner">
+                          <ListTodo className="w-3.5 h-3.5 text-slate-400" />
+                          {totalTasks === 0 ? 'Sin tareas' : `${pendingTasks} pendientes`}
                         </div>
-                      ) : null}
+                      </div>
                     </div>
 
-                    {/* Badges / Meta Info */}
-                    <div className="flex flex-wrap gap-2">
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-bold text-slate-300">
-                        <Factory className="w-3.5 h-3.5 text-blue-400" />
-                        <span className="truncate max-w-[150px]">{project.client.name}</span>
+                    {/* ── ATORADO REASON ── */}
+                    {isAtorado && project.blockReason && (
+                      <div className="relative z-10 mb-8 bg-red-950/60 border border-red-500/30 rounded-2xl p-5 backdrop-blur-md shadow-[inset_0_2px_15px_rgba(0,0,0,0.5)]">
+                        <div className="flex items-center gap-2 mb-2">
+                          <ShieldAlert className="w-4 h-4 text-red-400" />
+                          <p className="text-[10px] font-black text-red-400 uppercase tracking-[0.15em] opacity-90">Motivo del Bloqueo</p>
+                        </div>
+                        <p className="text-sm text-red-100/90 font-medium leading-relaxed">{project.blockReason}</p>
+                      </div>
+                    )}
+
+                    {/* ── PROGRESS SECTION ── */}
+                    <div className="relative z-10 mt-auto pt-4">
+                      <div className="flex justify-between items-end mb-4">
+                        <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Avance Global</span>
+                        <span className={`text-4xl font-black tabular-nums tracking-tighter drop-shadow-md ${
+                          isAtorado ? 'text-red-400' : isRiesgo ? 'text-amber-400' : 'text-white'
+                        }`}>
+                          {project.progress}%
+                        </span>
                       </div>
                       
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-bold text-slate-300">
-                        <ListTodo className="w-3.5 h-3.5 text-slate-400" />
-                        {totalTasks === 0 ? 'Sin tareas' : `${pendingTasks} pendientes`}
+                      {/* Premium Progress Bar Track */}
+                      <div className="w-full bg-black/60 rounded-full h-5 overflow-hidden border border-white/10 shadow-[inset_0_2px_5px_rgba(0,0,0,0.5)] p-1 relative">
+                        {/* Fill */}
+                        <div 
+                          className={`h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden ${progressGradient}`}
+                          style={{ width: `${project.progress}%` }}
+                        >
+                          {/* Shimmer overlay inside fill */}
+                          <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-shimmer" />
+                        </div>
                       </div>
                     </div>
+
                   </div>
-
-                  {/* Block Reason Highlight (Only for Atorado) */}
-                  {isAtorado && project.blockReason && (
-                    <div className="relative z-10 mb-6 bg-red-950/80 border border-red-500/40 rounded-xl p-4 shadow-inner">
-                      <p className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-1 opacity-80">Razón de Bloqueo</p>
-                      <p className="text-sm text-red-100 font-medium leading-relaxed">{project.blockReason}</p>
-                    </div>
-                  )}
-
-                  {/* Progress Section */}
-                  <div className="relative z-10 mt-auto">
-                    <div className="flex justify-between items-end mb-3">
-                      <span className="text-sm font-bold text-slate-400 uppercase tracking-wider">Avance Global</span>
-                      <span className={`text-3xl font-black tabular-nums tracking-tighter ${
-                        isAtorado ? 'text-red-400' : isRiesgo ? 'text-amber-400' : 'text-white'
-                      }`}>
-                        {project.progress}%
-                      </span>
-                    </div>
-                    
-                    {/* THICK PROGRESS BAR */}
-                    <div className="w-full bg-slate-900/80 rounded-full h-4 overflow-hidden border border-white/5 shadow-inner p-0.5">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden ${progressGradient}`}
-                        style={{ width: `${project.progress}%` }}
-                      >
-                        {/* Shimmer effect inside progress bar */}
-                        <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </main>
+                )
+              })}
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
