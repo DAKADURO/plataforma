@@ -111,7 +111,7 @@ export default function MachinesClient({
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-white">Consumibles y Herramientas (BOM)</h3>
               {role !== 'TECNICO' && (
-                <Button onClick={() => setMaterialModalOpen(true)} variant="outline" className="text-sm py-1.5">Añadir Material</Button>
+                <Button onClick={() => setMaterialModalOpen(true)} variant="secondary" className="text-sm py-1.5">Añadir Material</Button>
               )}
             </div>
             {selectedMachine.materials?.length === 0 ? (
