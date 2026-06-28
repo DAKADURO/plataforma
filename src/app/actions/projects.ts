@@ -42,6 +42,9 @@ export async function getProjectById(id: string) {
       },
       tasks: {
         orderBy: { createdAt: 'asc' }
+      },
+      notes: {
+        orderBy: { createdAt: 'desc' }
       }
     }
   })
@@ -120,3 +123,18 @@ export async function updateProjectStatus(data: {
   }
 }
 
+export async function addProjectNote(projectId: string, content: string, author: string) {
+  try {
+    await requireRole(ACTIVE_ROLES)
+    await prisma.projectNote.create({
+      data: { projectId, content, author }
+    })
+    revalidatePath(`/proyectos/${projectId}`)
+    return { success: true }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('permisos')) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'Error al agregar la nota rápida.' }
+  }
+}

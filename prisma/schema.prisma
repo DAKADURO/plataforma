@@ -51,6 +51,7 @@ model Project {
   documents   Document[]
   inventory   Inventory[]
   tasks       ProjectTask[]
+  notes       ProjectNote[]
 
   @@index([clientId])
   @@index([status])
@@ -72,6 +73,20 @@ model ProjectTask {
 
   @@index([projectId])
   @@index([status])
+}
+
+// =======================
+// Notas Rápidas
+// =======================
+model ProjectNote {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  content   String
+  author    String   
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
 }
 
 // =======================

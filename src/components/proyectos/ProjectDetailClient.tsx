@@ -2,12 +2,13 @@
 
 import React, { useState, useTransition } from 'react';
 import { updateProjectStatus } from '@/app/actions/projects';
+import { addProjectNote } from '@/app/actions/projects';
 import { createTask, updateTask, deleteTask } from '@/app/actions/tasks';
 import {
   ArrowLeft, CheckCircle2, AlertTriangle, XCircle,
   Users, Package, FileText, UploadCloud,
   ChevronDown, ChevronRight, Download, Clock,
-  Save, Plus, Trash2, ListChecks, Calendar,
+  Save, Plus, Trash2, ListChecks, Calendar, MessageSquare, Send
 } from 'lucide-react';
 import Link from 'next/link';
 import UploadDocumentModal from './UploadDocumentModal';
@@ -47,6 +48,13 @@ type ProjectTask = {
   status: string;
 };
 
+type ProjectNote = {
+  id: string;
+  content: string;
+  author: string;
+  createdAt: Date;
+};
+
 type Project = {
   id: string;
   name: string;
@@ -56,6 +64,7 @@ type Project = {
   inventory: InventoryItem[];
   documents: ProjectDocument[];
   tasks: ProjectTask[];
+  notes: ProjectNote[];
 };
 
 // ---- Helper ----
@@ -202,6 +211,11 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
   const [isDocumentModalOpen, setDocumentModalOpen] = useState(false);
   const [expandedDocs, setExpandedDocs] = useState<string[]>([]);
 
+  // Notes state
+  const [notes, setNotes] = useState<ProjectNote[]>(project.notes || []);
+  const [newNote, setNewNote] = useState('');
+  const [addingNote, setAddingNote] = useState(false);
+
   // Compute progress from tasks
   const computedProgress = tasks.length === 0
     ? 0
@@ -257,6 +271,23 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
 
   const handleOptimisticDelete = (id: string) => {
     setTasks(prev => prev.filter(t => t.id !== id));
+  };
+
+  const handleAddNote = async () => {
+    if (!newNote.trim() || addingNote) return;
+    setAddingNote(true);
+    const optimisticNote: ProjectNote = {
+      id: `tmp-${Date.now()}`,
+      content: newNote.trim(),
+      author: 'Tú', // En el futuro se puede sacar del user actual si role no es suficiente, pero por ahora "Tú" es útil
+      createdAt: new Date(),
+    };
+    setNotes(prev => [optimisticNote, ...prev]);
+    const contentToSend = newNote.trim();
+    setNewNote('');
+
+    await addProjectNote(project.id, contentToSend, 'Usuario'); // Aquí mandamos 'Usuario' pero en produccion seria session.user.name
+    setAddingNote(false);
   };
 
   return (
@@ -571,6 +602,51 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
                       </Card>
                     );
                   })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── NOTAS RÁPIDAS ── */}
+      <div className="bg-[#151515] rounded-2xl border border-white/10 p-6 md:p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <MessageSquare className="w-6 h-6 text-blue-400" />
+          <h2 className="text-xl font-bold text-white">Notas Rápidas</h2>
+        </div>
+        
+        <div className="flex gap-3 mb-6">
+          <input
+            type="text"
+            value={newNote}
+            onChange={e => setNewNote(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleAddNote()}
+            placeholder="Escribe una nota rápida... ej: 'Estos tornillos son de este tipo'"
+            className="flex-1 bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3
+              text-sm text-white placeholder-slate-500 focus:ring-1 focus:ring-blue-500 outline-none"
+          />
+          <button
+            onClick={handleAddNote}
+            disabled={!newNote.trim() || addingNote}
+            className="bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center shrink-0"
+            title="Guardar Nota"
+          >
+            <Send className="w-5 h-5" />
+          </button>
+        </div>
+
+        {notes.length === 0 ? (
+          <p className="text-sm text-slate-500 text-center py-4">No hay notas todavía.</p>
+        ) : (
+          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+            {notes.map(note => (
+              <div key={note.id} className="bg-[#1a1a1a] p-4 rounded-xl border border-white/5 relative group">
+                <p className="text-sm text-slate-200 mb-2 leading-relaxed">{note.content}</p>
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <span className="font-bold text-slate-400">{note.author}</span>
+                  <span>•</span>
+                  <span>{new Date(note.createdAt).toLocaleString()}</span>
                 </div>
               </div>
             ))}
