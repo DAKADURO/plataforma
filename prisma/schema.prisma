@@ -114,8 +114,9 @@ model Product {
   category   String
   department String      @default("General")
   itemType   String      @default("Consumible")
-  minStock   Int         @default(5)
-  inventory  Inventory[]
+  minStock         Int               @default(5)
+  inventory        Inventory[]
+  machineMaterials MachineMaterial[]
 
   @@index([category])
   @@index([department])
@@ -135,4 +136,51 @@ model Inventory {
   @@index([productId])
   @@index([projectId])
   @@index([type])
+}
+
+// =======================
+// FASE 5: Gestión de Máquinas
+// =======================
+model Machine {
+  id           String      @id @default(uuid())
+  name         String
+  serialNumber String      @unique
+  status       String      @default("ACTIVA") // ACTIVA, MANTENIMIENTO, INACTIVA
+  brand        String?
+  model        String?
+  
+  materials    MachineMaterial[]
+  documents    MachineDocument[]
+  maintenances MaintenanceLog[]
+}
+
+model MachineMaterial {
+  id        String   @id @default(uuid())
+  machineId String
+  machine   Machine  @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity  Int      @default(1)
+  
+  @@unique([machineId, productId])
+}
+
+model MachineDocument {
+  id         String   @id @default(uuid())
+  machineId  String
+  machine    Machine  @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  name       String
+  url        String
+  type       String   // e.g. "MANUAL", "GARANTIA"
+  uploadedAt DateTime @default(now())
+}
+
+model MaintenanceLog {
+  id          String   @id @default(uuid())
+  machineId   String
+  machine     Machine  @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  date        DateTime @default(now())
+  type        String   // "PREVENTIVO", "CORRECTIVO"
+  description String
+  performedBy String
 }
