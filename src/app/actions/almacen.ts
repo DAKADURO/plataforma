@@ -7,11 +7,14 @@ import { requireRole } from '@/lib/auth'
 // [SEC-FIX #1] Roles activos del sistema (excluye PENDIENTE)
 const ACTIVE_ROLES = ['ADMIN', 'GERENTE', 'TECNICO']
 
-export async function getProducts(category?: string) {
+export async function getProducts(category?: string, department?: string) {
   // [SEC-FIX #1] Proteger lectura de inventario contra usuarios PENDIENTE
   await requireRole(ACTIVE_ROLES)
   const products = await prisma.product.findMany({
-    where: category && category !== 'Todas' ? { category } : undefined,
+    where: {
+      ...(category && category !== 'Todas' ? { category } : {}),
+      ...(department && department !== 'Todos' ? { department } : {})
+    },
     include: {
       inventory: true
     },
@@ -28,6 +31,8 @@ export async function getProducts(category?: string) {
       sku: p.sku,
       name: p.name,
       category: p.category,
+      department: p.department,
+      itemType: p.itemType,
       minStock: p.minStock,
       stock
     }
@@ -44,7 +49,7 @@ export async function getCategories() {
   return categories.map(c => c.category).sort()
 }
 
-export async function createProduct(data: { sku: string, name: string, category: string, minStock: number }) {
+export async function createProduct(data: { sku: string, name: string, category: string, department: string, itemType: string, minStock: number }) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
     await prisma.product.create({ data })

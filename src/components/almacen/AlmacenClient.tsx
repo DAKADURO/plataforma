@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, ArrowDownToLine, ArrowUpFromLine, PackageSearch } from 'lucide-react';
+import { Plus, Search, ArrowDownToLine, ArrowUpFromLine, PackageSearch, ArrowLeft, FolderOpen } from 'lucide-react';
 import ProductModal from './ProductModal';
 import MovementModal from './MovementModal';
 import Button from '@/components/ui/Button';
@@ -12,6 +12,8 @@ type Product = {
   sku: string;
   name: string;
   category: string;
+  department: string;
+  itemType: string;
   minStock: number;
   stock: number;
 };
@@ -25,12 +27,14 @@ export default function AlmacenClient({
   products,
   categories,
   currentCategory,
+  currentDepartment,
   projects,
   role
 }: {
   products: Product[];
   categories: string[];
   currentCategory: string;
+  currentDepartment?: string;
   projects: ProjectOption[];
   role: string;
 }) {
@@ -53,8 +57,50 @@ export default function AlmacenClient({
     return p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term);
   });
 
+  const DEPARTMENTS = ['General', 'HVAC', 'Eléctrico', 'Plomería', 'Civil', 'Sistemas'];
+
+  if (!currentDepartment) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center bg-[#151515] p-4 rounded-xl border border-white/10">
+          <h2 className="text-xl font-bold text-white">Departamentos</h2>
+          {role !== 'TECNICO' && (
+            <Button onClick={() => setProductModalOpen(true)} variant="primary">
+              <Plus className="w-4 h-4 mr-1" />
+              Nuevo Producto
+            </Button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {DEPARTMENTS.map(dept => (
+            <button
+              key={dept}
+              onClick={() => router.push(`/almacen?department=${encodeURIComponent(dept)}`)}
+              className="flex flex-col items-center justify-center p-8 bg-[#151515] hover:bg-[#1a1a1a] border border-white/10 hover:border-blue-500/50 rounded-xl transition-all group"
+            >
+              <FolderOpen className="w-12 h-12 text-slate-400 group-hover:text-blue-400 mb-4 transition-colors" />
+              <h3 className="text-xl font-bold text-white">{dept}</h3>
+              <p className="text-sm text-slate-400 mt-2 text-center">Ver inventario y herramientas</p>
+            </button>
+          ))}
+        </div>
+        <ProductModal isOpen={isProductModalOpen} onClose={() => setProductModalOpen(false)} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <button 
+          onClick={() => router.push('/almacen')}
+          className="flex items-center gap-2 px-4 py-2 bg-[#151515] hover:bg-[#1a1a1a] border border-white/10 rounded-lg text-sm font-medium text-slate-300 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Volver a Departamentos
+        </button>
+        <h2 className="text-2xl font-bold text-white">Inventario: {currentDepartment}</h2>
+      </div>
+
       {/* Header controls */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-[#151515] p-4 rounded-xl border border-white/10">
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
@@ -106,6 +152,8 @@ export default function AlmacenClient({
                 <th scope="col" className="px-4 py-4 font-semibold">SKU</th>
                 <th scope="col" className="px-4 py-4 font-semibold">Producto</th>
                 <th scope="col" className="px-4 py-4 font-semibold">Categoría</th>
+                <th scope="col" className="px-4 py-4 font-semibold">Depto</th>
+                <th scope="col" className="px-4 py-4 font-semibold">Tipo</th>
                 <th scope="col" className="px-4 py-4 font-semibold text-center">Stock Actual</th>
                 <th scope="col" className="px-4 py-4 font-semibold text-center">Mínimo</th>
                 <th scope="col" className="px-4 py-4 font-semibold">Estado</th>
@@ -115,7 +163,7 @@ export default function AlmacenClient({
             <tbody>
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={role !== 'TECNICO' ? 7 : 6} className="text-center py-12 text-slate-500">
+                  <td colSpan={role !== 'TECNICO' ? 9 : 8} className="text-center py-12 text-slate-500">
                     <PackageSearch className="w-10 h-10 mx-auto mb-3 opacity-50" />
                     No se encontraron productos.
                   </td>
@@ -128,6 +176,12 @@ export default function AlmacenClient({
                       <td className="px-4 py-3 font-mono text-xs text-slate-400">{p.sku}</td>
                       <td className="px-4 py-3 font-medium text-white">{p.name}</td>
                       <td className="px-4 py-3 text-slate-400">{p.category}</td>
+                      <td className="px-4 py-3 text-slate-400">{p.department}</td>
+                      <td className="px-4 py-3 text-slate-400">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                          {p.itemType}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-center font-bold text-white">{p.stock}</td>
                       <td className="px-4 py-3 text-center text-slate-500">{p.minStock}</td>
                       <td className="px-4 py-3">

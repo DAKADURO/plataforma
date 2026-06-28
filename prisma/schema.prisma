@@ -108,14 +108,18 @@ model DocumentVersion {
 // FASE 2: Almacén e Inventario
 // =======================
 model Product {
-  id        String      @id @default(uuid())
-  sku       String      @unique
-  name      String
-  category  String
-  minStock  Int         @default(5)
-  inventory Inventory[]
+  id         String      @id @default(uuid())
+  sku        String      @unique
+  name       String
+  category   String
+  department String      @default("General")
+  itemType   String      @default("Consumible")
+  minStock   Int         @default(5)
+  inventory  Inventory[]
 
   @@index([category])
+  @@index([department])
+  @@index([itemType])
 }
 
 model Inventory {

@@ -8,8 +8,9 @@ type Props = { searchParams: Promise<{ [key: string]: string | string[] | undefi
 export default async function AlmacenPage(props: Props) {
   const params = await props.searchParams;
   const category = typeof params.category === 'string' ? params.category : 'Todas';
+  const department = typeof params.department === 'string' ? params.department : undefined;
   
-  const products = await getProducts(category);
+  const products = await getProducts(category, department);
   const categories = await getCategories();
   const allProjects = await getProjects();
   const activeProjects = allProjects.filter(p => p.status !== 'CERRADO');
@@ -28,7 +29,8 @@ export default async function AlmacenPage(props: Props) {
         <AlmacenClient 
           products={products} 
           categories={categories} 
-          currentCategory={category} 
+          currentCategory={category}
+          currentDepartment={department}
           projects={activeProjects}
           role={role || 'TECNICO'}
         />
