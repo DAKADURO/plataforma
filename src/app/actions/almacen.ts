@@ -54,6 +54,7 @@ export async function createProduct(data: { sku: string, name: string, category:
     await requireRole(['ADMIN', 'GERENTE'])
     await prisma.product.create({ data })
     revalidatePath('/almacen')
+    revalidatePath('/maquinas')
     return { success: true }
   } catch (error) {
     // [SEC-FIX #5] Sanitizar errores internos de Prisma

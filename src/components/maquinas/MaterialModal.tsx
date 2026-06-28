@@ -2,14 +2,16 @@
 
 import { useState } from 'react';
 import { addMachineMaterial } from '@/app/actions/machines';
-import { X } from 'lucide-react';
+import { X, Plus } from 'lucide-react';
 import Button from '@/components/ui/Button';
+import ProductModal from '@/components/almacen/ProductModal';
 
 export default function MaterialModal({ isOpen, onClose, machineId, products }: { isOpen: boolean; onClose: () => void; machineId: string; products: any[] }) {
   const [productId, setProductId] = useState(products.length > 0 ? products[0].id : '');
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isProductModalOpen, setProductModalOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -48,9 +50,19 @@ export default function MaterialModal({ isOpen, onClose, machineId, products }: 
           {error && <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-500/10 dark:text-red-400 rounded-lg">{error}</div>}
           
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Producto del Almacén</label>
+            <div className="flex justify-between items-end mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Producto del Almacén</label>
+              <button 
+                type="button" 
+                onClick={() => setProductModalOpen(true)}
+                className="text-xs text-blue-500 hover:text-blue-400 flex items-center gap-1 font-medium transition-colors"
+              >
+                <Plus className="w-3 h-3" /> Crear Nuevo
+              </button>
+            </div>
             <select required value={productId} onChange={e => setProductId(e.target.value)}
               className="w-full px-3 py-2 border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="" disabled>Selecciona un producto...</option>
               {products.map(p => (
                 <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
               ))}
@@ -73,6 +85,7 @@ export default function MaterialModal({ isOpen, onClose, machineId, products }: 
           </div>
         </form>
       </div>
+      <ProductModal isOpen={isProductModalOpen} onClose={() => setProductModalOpen(false)} />
     </div>
   );
 }
