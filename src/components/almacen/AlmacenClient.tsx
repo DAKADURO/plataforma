@@ -13,6 +13,9 @@ import TagManager from './TagManager';
 import TagFilter from './TagFilter';
 import ProductTagEditor from './ProductTagEditor';
 import TagBadge from './TagBadge';
+import AdvancedFilterPanel from './AdvancedFilterPanel';
+import FilterChips from './FilterChips';
+import EnhancedSearchBar from './EnhancedSearchBar';
 import Button from '@/components/ui/Button';
 
 type Product = {
@@ -64,6 +67,13 @@ export default function AlmacenClient({
   const [tags, setTags] = useState<any[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState({
+    categories: [] as string[],
+    departments: [] as string[],
+    itemTypes: [] as string[],
+    stockMin: 0,
+    stockMax: 99999,
+  });
 
   useEffect(() => {
     if (role !== 'TECNICO') {
@@ -95,9 +105,13 @@ export default function AlmacenClient({
 
   const filteredProducts = products.filter(p => {
     const term = searchTerm.toLowerCase();
-    const matchesSearch = p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term);
+    const matchesSearch = term === '' || p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term);
     const matchesTags = selectedTags.length === 0 || (p.tags && selectedTags.some(tid => p.tags.some((pt: any) => pt.tag.id === tid)));
-    return matchesSearch && matchesTags;
+    const matchesCategory = advancedFilters.categories.length === 0 || advancedFilters.categories.includes(p.category);
+    const matchesDepartment = advancedFilters.departments.length === 0 || advancedFilters.departments.includes(p.department);
+    const matchesItemType = advancedFilters.itemTypes.length === 0 || advancedFilters.itemTypes.includes(p.itemType);
+    const matchesStock = p.stock >= advancedFilters.stockMin && p.stock <= advancedFilters.stockMax;
+    return matchesSearch && matchesTags && matchesCategory && matchesDepartment && matchesItemType && matchesStock;
   });
 
   /* ── Vista de departamentos ─────────────────────────────────── */
@@ -193,50 +207,32 @@ export default function AlmacenClient({
 
       {/* Header controls */}
       <div
-        className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-xl border"
+        className="flex flex-col gap-4 p-4 rounded-xl border"
         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
       >
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-            <input
-              type="text"
-              placeholder="Buscar por SKU o Nombre..."
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+          <div className="flex-1 min-w-0">
+            <EnhancedSearchBar
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--border-focus)] border"
-              style={{
-                background: 'var(--bg-surface-alt)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-primary)',
-              }}
+              onChange={setSearchTerm}
+              suggestions={products
+                .filter(p => selectedTags.length === 0 || (p.tags && selectedTags.some(tid => p.tags.some((pt: any) => pt.tag.id === tid))))
+                .slice(0, 5)
+                .map(p => ({
+                  type: 'product' as const,
+                  value: p.sku,
+                  label: `${p.sku} - ${p.name}`,
+                }))}
             />
           </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <label htmlFor="category" className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-              Categoría:
-            </label>
-            <select
-              id="category"
-              value={currentCategory}
-              onChange={handleCategoryChange}
-              className="rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--border-focus)] w-full sm:w-48 border"
-              style={{
-                background: 'var(--bg-surface-alt)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-primary)',
-              }}
-            >
-              <option value="Todas">Todas</option>
-              {categories.map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
+          <AdvancedFilterPanel
+            allCategories={categories}
+            filters={advancedFilters}
+            onFilterChange={setAdvancedFilters}
+          />
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full">
           {tags.length > 0 && (
             <TagFilter tags={tags} selectedTags={selectedTags} onTagsChange={setSelectedTags} onManageTags={() => setTagManagerOpen(true)} />
           )}
@@ -266,6 +262,36 @@ export default function AlmacenClient({
           </button>
         )}
       </div>
+
+      {/* Filter chips display */}
+      {(advancedFilters.categories.length > 0 ||
+        advancedFilters.departments.length > 0 ||
+        advancedFilters.itemTypes.length > 0 ||
+        (advancedFilters.stockMin > 0 || advancedFilters.stockMax < 99999) ||
+        selectedTags.length > 0) && (
+        <FilterChips
+          categories={advancedFilters.categories}
+          departments={advancedFilters.departments}
+          itemTypes={advancedFilters.itemTypes}
+          stockMin={advancedFilters.stockMin}
+          stockMax={advancedFilters.stockMax}
+          tagNames={selectedTags.map(tid => {
+            const tag = tags.find(t => t.id === tid);
+            return { id: tid, name: tag?.name || tid };
+          })}
+          resultCount={filteredProducts.length}
+          onRemoveCategory={cat => setAdvancedFilters(f => ({ ...f, categories: f.categories.filter(c => c !== cat) }))}
+          onRemoveDepartment={dept => setAdvancedFilters(f => ({ ...f, departments: f.departments.filter(d => d !== dept) }))}
+          onRemoveItemType={type => setAdvancedFilters(f => ({ ...f, itemTypes: f.itemTypes.filter(t => t !== type) }))}
+          onRemoveStock={() => setAdvancedFilters(f => ({ ...f, stockMin: 0, stockMax: 99999 }))}
+          onRemoveTag={tagId => setSelectedTags(st => st.filter(t => t !== tagId))}
+          onClearAll={() => {
+            setAdvancedFilters({ categories: [], departments: [], itemTypes: [], stockMin: 0, stockMax: 99999 });
+            setSelectedTags([]);
+            setSearchTerm('');
+          }}
+        />
+      )}
 
       {/* Mobile card list */}
       <div className="block md:hidden space-y-3">
