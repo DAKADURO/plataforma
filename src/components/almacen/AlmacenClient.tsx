@@ -27,6 +27,7 @@ type Product = {
   itemType: string;
   minStock: number;
   stock: number;
+  tags?: any[];
 };
 
 type ProjectOption = {
