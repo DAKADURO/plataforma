@@ -1,0 +1,22 @@
+import { getProjectById } from '@/app/actions/projects'
+import { notFound } from 'next/navigation'
+import ProjectDetailClient from '@/components/proyectos/ProjectDetailClient'
+import { getCurrentUserRole } from '@/lib/auth'
+
+export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  const project = await getProjectById(resolvedParams.id);
+  const role = await getCurrentUserRole();
+
+  if (!project) {
+    notFound();
+  }
+
+  return (
+    <div className="w-full">
+      <div className="w-full max-w-[1400px] mx-auto space-y-8 px-4 md:px-6">
+        <ProjectDetailClient project={project} role={role || 'TECNICO'} />
+      </div>
+    </div>
+  )
+}
