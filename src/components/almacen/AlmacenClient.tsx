@@ -130,18 +130,29 @@ export default function AlmacenClient({
               Selecciona un área para gestionar su inventario
             </p>
           </div>
-          {role !== 'TECNICO' && (
+          <div className="mt-4 md:mt-0 flex items-center gap-3">
             <button
-              onClick={() => setProductModalOpen(true)}
-              className="mt-4 md:mt-0 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white transition-all hover:-translate-y-px active:translate-y-0"
-              style={{ background: 'var(--accent)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-hover)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent)')}
+              onClick={() => router.push('/almacen/reports')}
+              className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all border"
+              style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
             >
-              <Plus className="w-5 h-5" />
-              Nuevo Producto
+              📊 Reportes
             </button>
-          )}
+            {role !== 'TECNICO' && (
+              <button
+                onClick={() => setProductModalOpen(true)}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white transition-all hover:-translate-y-px active:translate-y-0"
+                style={{ background: 'var(--accent)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-hover)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent)')}
+              >
+                <Plus className="w-5 h-5" />
+                Nuevo Producto
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
