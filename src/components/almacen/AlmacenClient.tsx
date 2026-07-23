@@ -107,7 +107,7 @@ export default function AlmacenClient({
   const filteredProducts = products.filter(p => {
     const term = searchTerm.toLowerCase();
     const matchesSearch = term === '' || p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term);
-    const matchesTags = selectedTags.length === 0 || (p.tags && selectedTags.some(tid => p.tags.some((pt: any) => pt.tag.id === tid)));
+    const matchesTags = selectedTags.length === 0 || selectedTags.some(tid => (p.tags ?? []).some((pt: any) => pt.tag.id === tid));
     const matchesCategory = advancedFilters.categories.length === 0 || advancedFilters.categories.includes(p.category);
     const matchesDepartment = advancedFilters.departments.length === 0 || advancedFilters.departments.includes(p.department);
     const matchesItemType = advancedFilters.itemTypes.length === 0 || advancedFilters.itemTypes.includes(p.itemType);
@@ -228,7 +228,7 @@ export default function AlmacenClient({
               value={searchTerm}
               onChange={setSearchTerm}
               suggestions={products
-                .filter(p => selectedTags.length === 0 || (p.tags && selectedTags.some(tid => p.tags.some((pt: any) => pt.tag.id === tid))))
+                .filter(p => selectedTags.length === 0 || selectedTags.some(tid => (p.tags ?? []).some((pt: any) => pt.tag.id === tid)))
                 .slice(0, 5)
                 .map(p => ({
                   type: 'product' as const,
