@@ -31,14 +31,15 @@ model AuditLog {
 // FASE 3: CRM y Proyectos
 // =======================
 model Client {
-  id       String    @id @default(uuid())
-  name     String
-  contact  String?
-  email    String?
-  phone    String?
-  rfc      String?
-  address  String?
-  projects Project[]
+  id        String     @id @default(uuid())
+  name      String
+  contact   String?
+  email     String?
+  phone     String?
+  rfc       String?
+  address   String?
+  projects  Project[]
+  proposals Proposal[]
 }
 
 model Project {
@@ -185,7 +186,8 @@ model Machine {
   brand        String?
   model        String?
   imageUrl     String?
-  
+  isImported   Boolean     @default(false)
+
   materials    MachineMaterial[]
   documents    MachineDocument[]
   maintenances MaintenanceLog[]
@@ -221,4 +223,61 @@ model MaintenanceLog {
   type        String   // "PREVENTIVO", "CORRECTIVO"
   description String
   performedBy String
+}
+
+// =======================
+// FASE 6: Propuestas
+// =======================
+model Proposal {
+  id          String             @id @default(uuid())
+  clientId    String
+  client      Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  amount      Float              @default(0)
+  status      String             @default("BORRADOR") // BORRADOR, ENVIADA, APROBADA, RECHAZADA, PROYECTO
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  photos      ProposalPhoto[]
+  documents   ProposalDocument[]
+  materials   ProposalMaterial[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model ProposalPhoto {
+  id         String   @id @default(uuid())
+  proposalId String
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  url        String
+  caption    String?
+  createdAt  DateTime @default(now())
+
+  @@index([proposalId])
+}
+
+model ProposalDocument {
+  id         String   @id @default(uuid())
+  proposalId String
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  name       String
+  type       String   // PROPUESTA, ORDEN_COMPRA, REPORTE, PLANO, OTRO
+  url        String
+  createdAt  DateTime @default(now())
+
+  @@index([proposalId])
+}
+
+model ProposalMaterial {
+  id         String   @id @default(uuid())
+  proposalId String
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  name       String
+  category   String   @default("General")
+  quantity   Float    @default(1)
+  unitPrice  Float    @default(0)
+
+  @@index([proposalId])
 }

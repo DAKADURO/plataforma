@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createMachine } from '@/app/actions/machines';
-import { X } from 'lucide-react';
+import { X, Globe } from 'lucide-react';
 import Button from '@/components/ui/Button';
 
 export default function MachineModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -12,6 +12,7 @@ export default function MachineModal({ isOpen, onClose }: { isOpen: boolean; onC
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [isImported, setIsImported] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,7 +23,7 @@ export default function MachineModal({ isOpen, onClose }: { isOpen: boolean; onC
     setLoading(true);
     setError('');
 
-    const res = await createMachine({ name, serialNumber, category, brand, model, imageUrl });
+    const res = await createMachine({ name, serialNumber, category, brand, model, imageUrl, isImported });
     setLoading(false);
 
     if (res.success) {
@@ -31,6 +32,7 @@ export default function MachineModal({ isOpen, onClose }: { isOpen: boolean; onC
       setBrand('');
       setModel('');
       setImageUrl('');
+      setIsImported(false);
       onClose();
     } else {
       setError(res.error || 'Error al registrar máquina');
@@ -99,7 +101,39 @@ export default function MachineModal({ isOpen, onClose }: { isOpen: boolean; onC
             />
           </div>
           
-          <div className="pt-4 flex justify-end gap-3">
+          {/* Imported toggle */}
+          <button
+            type="button"
+            onClick={() => setIsImported(v => !v)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left"
+            style={
+              isImported
+                ? { borderColor: 'var(--accent)', background: 'var(--accent-subtle)' }
+                : { borderColor: 'var(--border)', background: 'var(--bg-surface-alt)' }
+            }
+          >
+            <div
+              className="w-5 h-5 rounded flex items-center justify-center shrink-0 border-2 transition-all"
+              style={
+                isImported
+                  ? { background: 'var(--accent)', borderColor: 'var(--accent)' }
+                  : { background: 'transparent', borderColor: 'var(--border)' }
+              }
+            >
+              {isImported && <span className="text-white text-xs font-bold leading-none">✓</span>}
+            </div>
+            <Globe className="w-4 h-4 shrink-0" style={{ color: isImported ? 'var(--accent)' : 'var(--text-muted)' }} />
+            <div>
+              <p className="text-sm font-semibold" style={{ color: isImported ? 'var(--accent)' : 'var(--text-primary)' }}>
+                Equipo importado
+              </p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Marcar si la máquina/equipo es de origen extranjero
+              </p>
+            </div>
+          </button>
+
+          <div className="pt-2 flex justify-end gap-3">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">
               Cancelar
             </button>

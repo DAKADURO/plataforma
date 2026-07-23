@@ -29,7 +29,7 @@ export async function getMachines() {
   }
 }
 
-export async function createMachine(data: { name: string, serialNumber: string, category: string, brand?: string, model?: string, imageUrl?: string }) {
+export async function createMachine(data: { name: string, serialNumber: string, category: string, brand?: string, model?: string, imageUrl?: string, isImported?: boolean }) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
     await prisma.machine.create({ data })

@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Settings, Wrench, FileText, ArrowLeft, Activity, ShieldAlert, CheckCircle2, Car, Laptop, Box } from 'lucide-react';
+import { Plus, Settings, Wrench, FileText, ArrowLeft, Activity, ShieldAlert, CheckCircle2, Car, Laptop, Box, Globe } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import dynamic from 'next/dynamic';
 
@@ -117,6 +117,13 @@ export default function MachinesClient({
                   </div>
                   <h3 className="text-lg font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{m.name}</h3>
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>S/N: {m.serialNumber}</p>
+                  {m.isImported && (
+                    <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border"
+                      style={{ background: 'rgba(245,158,11,0.1)', color: '#d97706', borderColor: 'rgba(245,158,11,0.3)' }}>
+                      <Globe className="w-3 h-3" />
+                      Importado
+                    </div>
+                  )}
                 </div>
               );
             })
@@ -199,6 +206,19 @@ export default function MachinesClient({
                     <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{value}</p>
                   </div>
                 ))}
+                <div>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Origen</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {selectedMachine.isImported ? (
+                      <>
+                        <Globe className="w-3.5 h-3.5" style={{ color: '#d97706' }} />
+                        <span className="font-medium" style={{ color: '#d97706' }}>Importado</span>
+                      </>
+                    ) : (
+                      <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Nacional</span>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

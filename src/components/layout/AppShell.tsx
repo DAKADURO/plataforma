@@ -4,7 +4,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   LogOut, User, LayoutDashboard, Package, Folders, Menu,
-  Activity, X, Users, Shield, Settings, ChevronLeft, ChevronRight,
+  Activity, X, Users, Shield, Settings, ChevronLeft, ChevronRight, ClipboardList,
 } from 'lucide-react';
 import Link from 'next/link';
 import Notifications from './Notifications';
@@ -24,6 +24,7 @@ const NAV_LINKS = [
   { href: '/almacen',    label: 'Almacén',         icon: Package },
   { href: '/maquinas',   label: 'Máquinas',        icon: Settings },
   { href: '/clientes',   label: 'Clientes',        icon: Users },
+  { href: '/propuestas', label: 'Propuestas',      icon: ClipboardList },
   { href: '/proyectos',  label: 'Proyectos',       icon: Folders },
   { href: '/visor',      label: 'Centro de Mando', icon: LayoutDashboard },
   { href: '/analiticas', label: 'Analíticas',      icon: Activity },
