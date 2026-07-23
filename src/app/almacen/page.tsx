@@ -2,6 +2,7 @@
 import { getProducts, getCategories } from '@/app/actions/almacen'
 import { getProjects } from '@/app/actions/projects'
 import AlmacenClient from '@/components/almacen/AlmacenClient'
+import KeyboardShortcuts from '@/components/almacen/KeyboardShortcuts'
 import { getCurrentUserRole } from '@/lib/auth'
 
 type Props = { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }
@@ -31,15 +32,17 @@ export default async function AlmacenPage(props: Props) {
       </header>
 
       <main>
-        <AlmacenClient 
-          products={products} 
-          categories={allCategories} 
+        <AlmacenClient
+          products={products}
+          categories={allCategories}
           currentCategory={category}
           currentDepartment={department}
           projects={activeProjects}
           role={role || 'TECNICO'}
         />
       </main>
+
+      <KeyboardShortcuts />
     </div>
   )
 }
