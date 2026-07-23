@@ -397,8 +397,8 @@ export default function ClientManager({ initialClients, userRole }: { initialCli
                   onClick={() => setIsModalOpen(false)}
                   className="w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-bold transition-colors"
                   style={{ color: 'var(--text-muted)' }}
-                  onMouseEnter={e => { (e.currentTarget.style.color = 'var(--text-primary)'; (e.currentTarget as HTMLElement).style.background = 'var(--bg-surface-alt)'); }}
-                  onMouseLeave={e => { (e.currentTarget.style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.background = ''); }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; (e.currentTarget as HTMLElement).style.background = 'var(--bg-surface-alt)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.background = ''; }}
                 >
                   Cancelar
                 </button>
