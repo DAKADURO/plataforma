@@ -28,6 +28,7 @@ export default function MovementModal({
   const [quantity, setQuantity] = useState<number | ''>(1);
   const [type, setType] = useState<'ENTRADA' | 'SALIDA'>(initialType);
   const [projectId, setProjectId] = useState('');
+  const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -39,6 +40,7 @@ export default function MovementModal({
         setType(initialType);
         setQuantity(1);
         setProjectId('');
+        setNotes('');
         setError('');
       }, 0);
     }
@@ -66,7 +68,7 @@ export default function MovementModal({
       }
     }
 
-    const res = await createMovement({ productId, quantity: Number(quantity) || 1, type, projectId: type === 'SALIDA' ? projectId : undefined });
+    const res = await createMovement({ productId, quantity: Number(quantity) || 1, type, projectId: type === 'SALIDA' ? projectId : undefined, notes: notes || undefined });
     setLoading(false);
 
     if (res.success) {
@@ -74,6 +76,7 @@ export default function MovementModal({
       setQuantity(1);
       setType('ENTRADA');
       setProjectId('');
+      setNotes('');
       onClose();
     } else {
       setError(res.error || 'Error al registrar movimiento');
@@ -143,7 +146,16 @@ export default function MovementModal({
               className="w-full px-3 py-2 border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
           </div>
-          
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Notas (Opcional)</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)}
+              placeholder="Ej: Reposición mensual, devuelto por defecto, etc."
+              rows={2}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+            />
+          </div>
+
           <div className="pt-4 flex justify-end gap-3">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">
               Cancelar

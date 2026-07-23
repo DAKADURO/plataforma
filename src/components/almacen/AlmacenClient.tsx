@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Search, ArrowDownToLine, ArrowUpFromLine, PackageSearch, ArrowLeft, FolderOpen, Trash2, Zap, Droplets, Wind, HardHat, Monitor } from 'lucide-react';
-import { deleteProduct } from '@/app/actions/almacen';
+import { deleteProduct, getAlerts } from '@/app/actions/almacen';
 import ProductModal from './ProductModal';
 import MovementModal from './MovementModal';
+import StockAlertsWidget from './StockAlertsWidget';
 import Button from '@/components/ui/Button';
 
 type Product = {
@@ -53,6 +54,19 @@ export default function AlmacenClient({
   const [isProductModalOpen, setProductModalOpen] = useState(false);
   const [movementState, setMovementState] = useState<{ isOpen: boolean; productId?: string; type?: 'ENTRADA' | 'SALIDA' }>({ isOpen: false });
   const [searchTerm, setSearchTerm] = useState('');
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [loadingAlerts, setLoadingAlerts] = useState(true);
+
+  useEffect(() => {
+    if (role !== 'TECNICO') {
+      getAlerts().then(res => {
+        if (res.success) setAlerts(res.alerts || []);
+        setLoadingAlerts(false);
+      });
+    } else {
+      setLoadingAlerts(false);
+    }
+  }, [role]);
 
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
@@ -153,6 +167,11 @@ export default function AlmacenClient({
           Inventario: {currentDepartment}
         </h2>
       </div>
+
+      {/* Stock Alerts Widget */}
+      {!loadingAlerts && alerts.length > 0 && role !== 'TECNICO' && (
+        <StockAlertsWidget alerts={alerts} userRole={role} />
+      )}
 
       {/* Header controls */}
       <div
