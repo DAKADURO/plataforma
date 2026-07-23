@@ -111,7 +111,6 @@ export default function RegistroPage() {
                       background: 'var(--danger-bg)',
                       borderColor: 'var(--danger)',
                       color: 'var(--danger)',
-                      borderOpacity: 0.3,
                     }}
                   >
                     {error}
