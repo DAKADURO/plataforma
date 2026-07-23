@@ -12,11 +12,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     notFound();
   }
 
-  // El costo por hora es confidencial: nunca debe llegar al navegador de un TECNICO,
-  // aunque la UI ya lo oculte (el JSON del server component sí viaja completo).
+  // El costo por hora y los cobros al cliente son confidenciales: nunca deben llegar
+  // al navegador de un TECNICO, aunque la UI ya lo oculte (el JSON del server
+  // component sí viaja completo).
   const resolvedRole = role || 'TECNICO'
   const sanitizedProject = resolvedRole === 'TECNICO'
-    ? { ...project, workLogs: project.workLogs.map(w => ({ ...w, hourlyCostSnapshot: 0 })) }
+    ? { ...project, workLogs: project.workLogs.map(w => ({ ...w, hourlyCostSnapshot: 0 })), payments: [] }
     : project
 
   return (

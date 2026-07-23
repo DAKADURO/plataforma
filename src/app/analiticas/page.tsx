@@ -2,7 +2,9 @@
 import { getProjects } from '@/app/actions/projects';
 import { getProducts } from '@/app/actions/almacen';
 import { getClients } from '@/app/actions/projects';
+import { getAccountsReceivable } from '@/app/actions/payments';
 import DashboardCharts from '@/components/analiticas/DashboardCharts';
+import AccountsReceivablePanel from '@/components/analiticas/AccountsReceivablePanel';
 import { requireRole } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
@@ -17,10 +19,11 @@ export default async function AnaliticasPage() {
 
   // Fetching live data since analytics should be fresh, and unstable_cache 
   // conflicts with the new role-based security (cookies cannot be read inside unstable_cache)
-  const [projects, products, clients] = await Promise.all([
+  const [projects, products, clients, receivable] = await Promise.all([
     getProjects(),
     getProducts(),
     getClients(),
+    getAccountsReceivable(),
   ]);
 
   // Enrich projects with their document count
@@ -47,6 +50,8 @@ export default async function AnaliticasPage() {
       </header>
 
       <DashboardCharts projects={enrichedProjects} products={products} clientCount={clients.length} />
+
+      <AccountsReceivablePanel summary={receivable.success ? receivable.summary : null} />
     </div>
   );
 }

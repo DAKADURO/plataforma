@@ -68,6 +68,20 @@ export const createMachineAssignmentSchema = z.object({
   path: ["endDate"],
 });
 
+// Project Payment Schema (facturación y cobros)
+export const createProjectPaymentSchema = z.object({
+  projectId: z.string().uuid("ID de proyecto inválido"),
+  concept: z.string().min(2, "El concepto debe tener al menos 2 caracteres").max(100),
+  amount: z.number().positive("El monto debe ser mayor a cero").max(100000000),
+  dueDate: z.coerce.date().optional(),
+  notes: z.string().max(250).optional(),
+});
+
+export const updateProjectContractAmountSchema = z.object({
+  projectId: z.string().uuid("ID de proyecto inválido"),
+  contractAmount: z.number().min(0, "El monto no puede ser negativo").max(100000000),
+});
+
 // Work Log Schema (horas de mano de obra)
 export const createWorkLogSchema = z.object({
   projectId: z.string().uuid("ID de proyecto inválido"),

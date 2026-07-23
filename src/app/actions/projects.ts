@@ -4,7 +4,7 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { requireRole } from '@/lib/auth'
-import { createClientSchema, createProjectSchema } from '@/lib/validations'
+import { createClientSchema, createProjectSchema, updateProjectContractAmountSchema } from '@/lib/validations'
 import { z } from 'zod'
 
 // [SEC-FIX #1] Proteger lecturas: usuarios con rol PENDIENTE no tienen acceso a datos
@@ -63,6 +63,9 @@ export async function getProjectById(id: string) {
       machineAssignments: {
         include: { machine: { select: { id: true, name: true, category: true } } },
         orderBy: { startDate: 'desc' }
+      },
+      payments: {
+        orderBy: { createdAt: 'desc' }
       }
     }
   })
@@ -180,6 +183,28 @@ export async function updateProjectBudget(id: string, budget: number) {
     return { success: true }
   } catch (error) {
     return { success: false, error: 'No se pudo actualizar el presupuesto.' }
+  }
+}
+
+export async function updateProjectContractAmount(projectId: string, contractAmount: number) {
+  try {
+    await requireRole(['ADMIN', 'GERENTE'])
+    const valid = updateProjectContractAmountSchema.parse({ projectId, contractAmount })
+    await prisma.project.update({
+      where: { id: valid.projectId },
+      data: { contractAmount: valid.contractAmount }
+    })
+    revalidatePath(`/proyectos/${projectId}`)
+    revalidatePath('/analiticas')
+    return { success: true }
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: 'Monto inválido.' }
+    }
+    if (error instanceof Error && error.message.includes('permisos')) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'No se pudo actualizar el monto contratado.' }
   }
 }
 

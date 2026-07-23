@@ -6,11 +6,13 @@ import { updateProjectStatus, updateProjectBudget } from '@/app/actions/projects
 import { addProjectNote } from '@/app/actions/projects';
 import { createTask, updateTask, deleteTask } from '@/app/actions/tasks';
 import { addWorkLog, deleteWorkLog } from '@/app/actions/worklogs';
+import { updateProjectContractAmount } from '@/app/actions/projects';
+import { addPayment, markPaymentPaid, markPaymentPending, deletePayment } from '@/app/actions/payments';
 import {
   ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, XCircle,
   Users, Package, FileText, UploadCloud,
   ChevronDown, ChevronRight, Download, Clock,
-  Save, Plus, Trash2, ListChecks, Calendar, MessageSquare, Send, Truck,
+  Save, Plus, Trash2, ListChecks, Calendar, MessageSquare, Send, Truck, Receipt, CircleCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import UploadDocumentModal from './UploadDocumentModal';
@@ -82,12 +84,23 @@ type MachineAssignment = {
   machine: { id: string; name: string; category: string };
 };
 
+type ProjectPayment = {
+  id: string;
+  concept: string;
+  amount: number;
+  status: string;
+  dueDate: Date | null;
+  paidDate: Date | null;
+  notes: string | null;
+};
+
 type Project = {
   id: string;
   name: string;
   status: string;
   blockReason: string | null;
   budget: number;
+  contractAmount: number;
   client: { name: string };
   team: { id: string; email: string; role: string }[];
   inventory: InventoryItem[];
@@ -96,6 +109,7 @@ type Project = {
   notes: ProjectNote[];
   workLogs: WorkLog[];
   machineAssignments: MachineAssignment[];
+  payments: ProjectPayment[];
 };
 
 // Las fechas de inicio/fin vienen de <input type="date"> y se guardan como medianoche UTC;
@@ -303,6 +317,20 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
   const remainingBudget = budget - totalCost;
   const isOverBudget = remainingBudget < 0;
 
+  const [contractAmount, setContractAmount] = useState(project.contractAmount || 0);
+  const [isEditingContract, setIsEditingContract] = useState(false);
+  const [savingContract, startSavingContract] = useTransition();
+  const [payments, setPayments] = useState<ProjectPayment[]>(project.payments || []);
+  const [newPaymentConcept, setNewPaymentConcept] = useState('');
+  const [newPaymentAmount, setNewPaymentAmount] = useState('');
+  const [newPaymentDueDate, setNewPaymentDueDate] = useState('');
+  const [addingPayment, startAddingPayment] = useTransition();
+  const [paymentError, setPaymentError] = useState('');
+
+  const totalPaid = payments.filter(p => p.status === 'PAGADO').reduce((sum, p) => sum + p.amount, 0);
+  const totalPendingCollection = payments.filter(p => p.status === 'PENDIENTE').reduce((sum, p) => sum + p.amount, 0);
+  const uncontractedBalance = contractAmount - (totalPaid + totalPendingCollection);
+
   const [departments, setDepartments] = useState<ProjectDepartment[]>(project.departments || []);
   const [activeDeptId, setActiveDeptId] = useState<string>(project.departments?.[0]?.id || '');
 
@@ -428,6 +456,53 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
     setWorkLogs(prev => prev.filter(w => w.id !== id));
     startAddingLog(async () => {
       await deleteWorkLog(id, project.id);
+    });
+  };
+
+  const handleSaveContract = () => {
+    startSavingContract(async () => {
+      await updateProjectContractAmount(project.id, contractAmount);
+      setIsEditingContract(false);
+    });
+  };
+
+  const handleAddPayment = () => {
+    const amount = Number(newPaymentAmount);
+    if (!newPaymentConcept.trim() || !Number.isFinite(amount) || amount <= 0) {
+      setPaymentError('Indica un concepto y un monto válido (mayor a cero).');
+      return;
+    }
+    setPaymentError('');
+    const concept = newPaymentConcept.trim();
+    startAddingPayment(async () => {
+      const result = await addPayment({ projectId: project.id, concept, amount, dueDate: newPaymentDueDate || undefined });
+      if (result.success && result.payment) {
+        setPayments(prev => [result.payment as ProjectPayment, ...prev]);
+        setNewPaymentConcept('');
+        setNewPaymentAmount('');
+        setNewPaymentDueDate('');
+      } else {
+        setPaymentError(result.error || 'No se pudo registrar.');
+      }
+    });
+  };
+
+  const handleTogglePaymentStatus = (payment: ProjectPayment) => {
+    const nextStatus = payment.status === 'PAGADO' ? 'PENDIENTE' : 'PAGADO';
+    setPayments(prev => prev.map(p => p.id === payment.id ? { ...p, status: nextStatus, paidDate: nextStatus === 'PAGADO' ? new Date() : null } : p));
+    startAddingPayment(async () => {
+      if (nextStatus === 'PAGADO') {
+        await markPaymentPaid(payment.id, project.id);
+      } else {
+        await markPaymentPending(payment.id, project.id);
+      }
+    });
+  };
+
+  const handleDeletePayment = (id: string) => {
+    setPayments(prev => prev.filter(p => p.id !== id));
+    startAddingPayment(async () => {
+      await deletePayment(id, project.id);
     });
   };
 
@@ -810,6 +885,192 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* ── FACTURACIÓN Y COBROS ── */}
+      {canSeeMoney && (
+        <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+            <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
+              <Receipt className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+              Facturación y Cobros
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Monto Contratado</span>
+                <button onClick={() => setIsEditingContract(!isEditingContract)} className="text-[10px] font-bold transition-colors" style={{ color: 'var(--accent)' }}>
+                  {isEditingContract ? 'Cerrar' : 'Editar'}
+                </button>
+              </div>
+              {isEditingContract ? (
+                <div className="flex gap-2 mt-2">
+                  <input
+                    type="number"
+                    value={contractAmount}
+                    onChange={e => setContractAmount(Number(e.target.value))}
+                    style={inputFieldStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                  />
+                  <button
+                    onClick={handleSaveContract}
+                    disabled={savingContract}
+                    className="px-3 py-2 rounded-lg text-sm font-bold text-white disabled:opacity-50"
+                    style={{ background: 'var(--accent)' }}
+                  >
+                    OK
+                  </button>
+                </div>
+              ) : (
+                <div className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>${contractAmount.toLocaleString()}</div>
+              )}
+            </div>
+
+            <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+              <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>Cobrado</span>
+              <div className="text-2xl font-black" style={{ color: 'var(--success)' }}>${totalPaid.toLocaleString()}</div>
+            </div>
+
+            <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+              <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>Por Cobrar</span>
+              <div className="text-2xl font-black" style={{ color: 'var(--warning)' }}>${totalPendingCollection.toLocaleString()}</div>
+            </div>
+
+            <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+              <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>Sin Facturar</span>
+              <div className="text-2xl font-black" style={{ color: 'var(--text-secondary)' }}>${Math.max(0, uncontractedBalance).toLocaleString()}</div>
+            </div>
+          </div>
+
+          {/* Add Payment Row */}
+          <div
+            className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-3 mb-4 p-4 rounded-xl border"
+            style={{ background: 'var(--accent-subtle)', borderColor: 'var(--accent)' }}
+          >
+            <div>
+              <label className="block text-[10px] font-bold mb-1 uppercase" style={{ color: 'var(--text-muted)' }}>Concepto</label>
+              <input
+                type="text"
+                placeholder="ej. Anticipo, Estimación 1, Finiquito"
+                value={newPaymentConcept}
+                onChange={e => setNewPaymentConcept(e.target.value)}
+                style={inputFieldStyle}
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold mb-1 uppercase" style={{ color: 'var(--text-muted)' }}>Monto</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                placeholder="ej. 50000"
+                value={newPaymentAmount}
+                onChange={e => setNewPaymentAmount(e.target.value)}
+                style={inputFieldStyle}
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold mb-1 uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                <Calendar className="w-3 h-3" /> Vence (opcional)
+              </label>
+              <input
+                type="date"
+                value={newPaymentDueDate}
+                onChange={e => setNewPaymentDueDate(e.target.value)}
+                style={inputFieldStyle}
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={handleAddPayment}
+                disabled={!newPaymentConcept.trim() || !newPaymentAmount || addingPayment}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: 'var(--accent)' }}
+              >
+                <Plus className="w-4 h-4" />
+                Registrar
+              </button>
+            </div>
+          </div>
+          {paymentError && (
+            <p className="text-xs font-bold mb-4 px-1" style={{ color: 'var(--danger)' }}>{paymentError}</p>
+          )}
+
+          {payments.length === 0 ? (
+            <div className="text-center p-12 border-2 border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+              <Receipt className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p className="font-medium">Sin cobros registrados aún.</p>
+              <p className="text-sm mt-1 opacity-70">Registra el anticipo, estimaciones o finiquito de este proyecto.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {payments.map(p => {
+                const isPaid = p.status === 'PAGADO';
+                const isOverdue = !isPaid && p.dueDate && new Date(p.dueDate) < new Date();
+                return (
+                  <div
+                    key={p.id}
+                    className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-xl border"
+                    style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
+                  >
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{p.concept}</p>
+                        <span
+                          className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border"
+                          style={isPaid
+                            ? { background: 'var(--success-bg)', color: 'var(--success)', borderColor: 'var(--success)' }
+                            : isOverdue
+                              ? { background: 'var(--danger-bg)', color: 'var(--danger)', borderColor: 'var(--danger)' }
+                              : { background: 'var(--warning-bg)', color: 'var(--warning)', borderColor: 'var(--warning)' }
+                          }
+                        >
+                          {isPaid ? 'Pagado' : isOverdue ? 'Vencido' : 'Pendiente'}
+                        </span>
+                      </div>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {p.dueDate ? `Vence: ${formatDateOnly(p.dueDate)}` : 'Sin fecha límite'}
+                        {isPaid && p.paidDate ? ` · Pagado: ${formatDateOnly(p.paidDate)}` : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>${p.amount.toLocaleString()}</span>
+                      <button
+                        onClick={() => handleTogglePaymentStatus(p)}
+                        disabled={addingPayment}
+                        className="text-xs font-bold px-2 py-1 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
+                        style={{ color: isPaid ? 'var(--text-muted)' : 'var(--success)' }}
+                      >
+                        <CircleCheck className="w-3.5 h-3.5" />
+                        {isPaid ? 'Marcar pendiente' : 'Marcar pagado'}
+                      </button>
+                      <button
+                        onClick={() => handleDeletePayment(p.id)}
+                        disabled={addingPayment}
+                        className="p-1.5 rounded-lg transition-colors disabled:opacity-50"
+                        style={{ color: 'var(--text-muted)' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--danger)'; (e.currentTarget as HTMLElement).style.background = 'var(--danger-bg)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.background = ''; }}
+                        title="Eliminar cobro"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
