@@ -5,9 +5,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Search, ArrowDownToLine, ArrowUpFromLine, PackageSearch, ArrowLeft, FolderOpen, Trash2, Zap, Droplets, Wind, HardHat, Monitor } from 'lucide-react';
 import { deleteProduct, getAlerts } from '@/app/actions/almacen';
+import { getTags } from '@/app/actions/tags';
 import ProductModal from './ProductModal';
 import MovementModal from './MovementModal';
 import StockAlertsWidget from './StockAlertsWidget';
+import TagManager from './TagManager';
+import TagFilter from './TagFilter';
+import ProductTagEditor from './ProductTagEditor';
+import TagBadge from './TagBadge';
 import Button from '@/components/ui/Button';
 
 type Product = {
@@ -56,15 +61,26 @@ export default function AlmacenClient({
   const [searchTerm, setSearchTerm] = useState('');
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState(true);
+  const [tags, setTags] = useState<any[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagManagerOpen, setTagManagerOpen] = useState(false);
 
   useEffect(() => {
     if (role !== 'TECNICO') {
-      getAlerts().then(res => {
-        if (res.success) setAlerts(res.alerts || []);
-        setLoadingAlerts(false);
-      });
+      Promise.all([
+        getAlerts().then(res => {
+          if (res.success) setAlerts(res.alerts || []);
+          setLoadingAlerts(false);
+        }),
+        getTags().then(res => {
+          if (res.success) setTags(res.tags || []);
+        })
+      ]);
     } else {
       setLoadingAlerts(false);
+      getTags().then(res => {
+        if (res.success) setTags(res.tags || []);
+      });
     }
   }, [role]);
 
@@ -79,7 +95,9 @@ export default function AlmacenClient({
 
   const filteredProducts = products.filter(p => {
     const term = searchTerm.toLowerCase();
-    return p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term);
+    const matchesSearch = p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term);
+    const matchesTags = selectedTags.length === 0 || (p.tags && selectedTags.some(tid => p.tags.some((pt: any) => pt.tag.id === tid)));
+    return matchesSearch && matchesTags;
   });
 
   /* ── Vista de departamentos ─────────────────────────────────── */
@@ -216,6 +234,23 @@ export default function AlmacenClient({
               ))}
             </select>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {tags.length > 0 && (
+            <TagFilter tags={tags} selectedTags={selectedTags} onTagsChange={setSelectedTags} onManageTags={() => setTagManagerOpen(true)} />
+          )}
+          {role !== 'TECNICO' && (
+            <button
+              onClick={() => setTagManagerOpen(true)}
+              className="px-3 py-2 rounded-lg text-sm font-semibold transition-all border"
+              style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              title="Gestionar etiquetas">
+              ⚙️ Tags
+            </button>
+          )}
         </div>
 
         {role !== 'TECNICO' && (
@@ -424,6 +459,7 @@ export default function AlmacenClient({
         initialProductId={movementState.productId}
         initialType={movementState.type}
       />
+      <TagManager isOpen={tagManagerOpen} onClose={() => setTagManagerOpen(false)} />
     </div>
   );
 }
