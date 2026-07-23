@@ -48,6 +48,24 @@ export const createMachineSchema = z.object({
   model: z.string().max(100).optional(),
   imageUrl: z.string().max(500).optional(),
   isImported: z.boolean().optional(),
+  dailyRate: z.number().min(0, "La tarifa no puede ser negativa").max(1000000).optional(),
+});
+
+export const updateMachineDailyRateSchema = z.object({
+  machineId: z.string().uuid("ID de máquina inválido"),
+  dailyRate: z.number().min(0, "La tarifa no puede ser negativa").max(1000000),
+});
+
+// Machine Assignment Schema (asignación de máquina a proyecto)
+export const createMachineAssignmentSchema = z.object({
+  machineId: z.string().uuid("ID de máquina inválido"),
+  projectId: z.string().uuid("ID de proyecto inválido"),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date().optional(),
+  notes: z.string().max(250).optional(),
+}).refine(data => !data.endDate || data.endDate >= data.startDate, {
+  message: "La fecha de fin no puede ser anterior a la de inicio",
+  path: ["endDate"],
 });
 
 // Work Log Schema (horas de mano de obra)

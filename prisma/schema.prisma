@@ -61,6 +61,7 @@ model Project {
   departments ProjectDepartment[]
   notes       ProjectNote[]
   workLogs    WorkLog[]
+  machineAssignments MachineAssignment[]
 
   @@index([clientId])
   @@index([status])
@@ -225,10 +226,34 @@ model Machine {
   model        String?
   imageUrl     String?
   isImported   Boolean     @default(false)
+  dailyRate    Float       @default(0) // Tarifa de uso por día para costeo en proyectos
 
   materials    MachineMaterial[]
   documents    MachineDocument[]
   maintenances MaintenanceLog[]
+  assignments  MachineAssignment[]
+}
+
+// =======================
+// Asignación de Máquinas a Proyectos (costeo de uso)
+// =======================
+model MachineAssignment {
+  id        String    @id @default(uuid())
+  machineId String
+  machine   Machine   @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  startDate DateTime
+  endDate   DateTime? // null = asignación activa (aún no finalizada)
+  notes     String?
+  // Tarifa/día congelada al momento de asignar: si luego cambia la tarifa de la
+  // máquina, el costo histórico de asignaciones ya cerradas no se altera.
+  dailyRateSnapshot Float @default(0)
+  createdAt DateTime  @default(now())
+
+  @@index([machineId])
+  @@index([projectId])
+  @@index([machineId, startDate])
 }
 
 model MachineMaterial {

@@ -10,7 +10,7 @@ import {
   ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, XCircle,
   Users, Package, FileText, UploadCloud,
   ChevronDown, ChevronRight, Download, Clock,
-  Save, Plus, Trash2, ListChecks, Calendar, MessageSquare, Send,
+  Save, Plus, Trash2, ListChecks, Calendar, MessageSquare, Send, Truck,
 } from 'lucide-react';
 import Link from 'next/link';
 import UploadDocumentModal from './UploadDocumentModal';
@@ -74,6 +74,14 @@ type WorkLog = {
   user: { email: string };
 };
 
+type MachineAssignment = {
+  id: string;
+  startDate: Date;
+  endDate: Date | null;
+  dailyRateSnapshot: number;
+  machine: { id: string; name: string; category: string };
+};
+
 type Project = {
   id: string;
   name: string;
@@ -87,7 +95,22 @@ type Project = {
   departments: ProjectDepartment[];
   notes: ProjectNote[];
   workLogs: WorkLog[];
+  machineAssignments: MachineAssignment[];
 };
+
+// Las fechas de inicio/fin vienen de <input type="date"> y se guardan como medianoche UTC;
+// comparamos por fecha calendario en UTC para no perder/ganar un día según la zona horaria local.
+function daysBetween(start: Date, end: Date): number {
+  const s = new Date(start);
+  const e = new Date(end);
+  const sUTC = Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate());
+  const eUTC = Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate());
+  return Math.max(1, Math.round((eUTC - sUTC) / (1000 * 60 * 60 * 24)) + 1);
+}
+
+function formatDateOnly(d: Date): string {
+  return new Date(d).toLocaleDateString('es-MX', { timeZone: 'UTC' });
+}
 
 // ---- Helper ----
 function toDateInput(d: Date | null): string {
@@ -273,7 +296,10 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
   const materialCost = project.inventory.reduce((sum, inv) => sum + inv.quantity * (inv.product?.cost || 0), 0);
   const laborCost = workLogs.reduce((sum, w) => sum + w.hours * w.hourlyCostSnapshot, 0);
   const totalHours = workLogs.reduce((sum, w) => sum + w.hours, 0);
-  const totalCost = canSeeMoney ? materialCost + laborCost : materialCost;
+  const machineCost = (project.machineAssignments || []).reduce(
+    (sum, a) => sum + daysBetween(a.startDate, a.endDate || new Date()) * a.dailyRateSnapshot, 0
+  );
+  const totalCost = materialCost + machineCost + (canSeeMoney ? laborCost : 0);
   const remainingBudget = budget - totalCost;
   const isOverBudget = remainingBudget < 0;
 
@@ -703,6 +729,13 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
               <div className="text-2xl font-black" style={{ color: 'var(--text-secondary)' }}>${materialCost.toLocaleString()}</div>
             </div>
 
+            {machineCost > 0 && (
+              <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>Costo Máquinas</span>
+                <div className="text-2xl font-black" style={{ color: 'var(--text-secondary)' }}>${machineCost.toLocaleString()}</div>
+              </div>
+            )}
+
             {canSeeMoney && (
               <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
                 <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>
@@ -729,6 +762,56 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
           </div>
         </div>
       </div>
+
+      {/* ── MÁQUINAS ASIGNADAS ── */}
+      {project.machineAssignments && project.machineAssignments.length > 0 && (
+        <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+            <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
+              <Truck className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+              Máquinas Asignadas
+            </h2>
+            <Link
+              href="/maquinas"
+              className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-colors"
+              style={{ background: 'var(--bg-surface-alt)', color: 'var(--text-muted)' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+            >
+              Gestionar en Máquinas <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {project.machineAssignments.map(a => {
+              const isActive = !a.endDate;
+              const days = daysBetween(a.startDate, a.endDate || new Date());
+              const cost = days * a.dailyRateSnapshot;
+              return (
+                <div
+                  key={a.id}
+                  className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-xl border"
+                  style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{a.machine.name}</p>
+                      {isActive && (
+                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+                          Activa
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {formatDateOnly(a.startDate)} — {a.endDate ? formatDateOnly(a.endDate) : 'presente'} ({days} {days === 1 ? 'día' : 'días'})
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>${cost.toLocaleString()}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── PLAN DE TRABAJO ── */}
       <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
@@ -1007,7 +1090,7 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
                 style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
               >
                 <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
-                  {new Date(log.date).toLocaleDateString()}
+                  {formatDateOnly(log.date)}
                 </span>
                 <span className="text-xs truncate" title={log.user.email} style={{ color: 'var(--text-muted)' }}>
                   {log.user.email}

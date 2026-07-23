@@ -59,6 +59,10 @@ export async function getProjectById(id: string) {
       workLogs: {
         include: { user: { select: { email: true } } },
         orderBy: { date: 'desc' }
+      },
+      machineAssignments: {
+        include: { machine: { select: { id: true, name: true, category: true } } },
+        orderBy: { startDate: 'desc' }
       }
     }
   })

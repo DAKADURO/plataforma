@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Settings, Wrench, FileText, ArrowLeft, Activity, ShieldAlert, CheckCircle2, Car, Laptop, Box, Globe } from 'lucide-react';
+import { Plus, Settings, Wrench, FileText, ArrowLeft, Activity, ShieldAlert, CheckCircle2, Car, Laptop, Box, Globe, Calendar, Trash2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import dynamic from 'next/dynamic';
+import { updateMachineDailyRate } from '@/app/actions/machines';
+import { assignMachineToProject, endMachineAssignment, deleteMachineAssignment } from '@/app/actions/machineAssignments';
 
 const MachineModal = dynamic(() => import('./MachineModal'), { ssr: false });
 const MaintenanceModal = dynamic(() => import('./MaintenanceModal'), { ssr: false });
@@ -13,23 +15,109 @@ const MaterialModal = dynamic(() => import('./MaterialModal'), { ssr: false });
 
 type Machine = any;
 type Product = any;
+type Project = any;
+
+// Las fechas de inicio/fin vienen de <input type="date"> y se guardan como medianoche UTC;
+// comparamos por fecha calendario en UTC para no perder/ganar un día según la zona horaria local.
+function daysBetween(start: Date, end: Date): number {
+  const s = new Date(start);
+  const e = new Date(end);
+  const sUTC = Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate());
+  const eUTC = Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate());
+  return Math.max(1, Math.round((eUTC - sUTC) / (1000 * 60 * 60 * 24)) + 1);
+}
+
+function formatDateOnly(d: Date): string {
+  return new Date(d).toLocaleDateString('es-MX', { timeZone: 'UTC' });
+}
 
 export default function MachinesClient({
   machines,
   products,
+  projects,
   role,
 }: {
   machines: Machine[];
   products: Product[];
+  projects: Project[];
   role: string;
 }) {
   const router = useRouter();
-  const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
-  const [activeTab, setActiveTab] = useState<'info' | 'materials' | 'maintenance' | 'docs'>('info');
+  // Guardamos solo el id y derivamos la máquina de la lista en cada render, así
+  // router.refresh() (tras guardar tarifa/asignación) siempre refleja datos frescos.
+  const [selectedMachineId, setSelectedMachineId] = useState<string | null>(null);
+  const selectedMachine = selectedMachineId ? machines.find((m: any) => m.id === selectedMachineId) || null : null;
+  const [activeTab, setActiveTab] = useState<'info' | 'materials' | 'maintenance' | 'assignments' | 'docs'>('info');
 
   const [isMachineModalOpen, setMachineModalOpen] = useState(false);
   const [isMaintenanceModalOpen, setMaintenanceModalOpen] = useState(false);
   const [isMaterialModalOpen, setMaterialModalOpen] = useState(false);
+
+  const [dailyRate, setDailyRate] = useState(0);
+  const [isEditingRate, setIsEditingRate] = useState(false);
+  const [savingRate, startSavingRate] = useTransition();
+
+  const [assignProjectId, setAssignProjectId] = useState('');
+  const [assignStart, setAssignStart] = useState(() => new Date().toISOString().split('T')[0]);
+  const [assignEnd, setAssignEnd] = useState('');
+  const [assignError, setAssignError] = useState('');
+  const [assigning, startAssigning] = useTransition();
+
+  const openMachine = (m: Machine) => {
+    setSelectedMachineId(m.id);
+    setDailyRate(m.dailyRate || 0);
+    setIsEditingRate(false);
+    setAssignProjectId('');
+    setAssignStart(new Date().toISOString().split('T')[0]);
+    setAssignEnd('');
+    setAssignError('');
+  };
+
+  const handleSaveRate = () => {
+    if (!selectedMachine) return;
+    startSavingRate(async () => {
+      await updateMachineDailyRate(selectedMachine.id, dailyRate);
+      setIsEditingRate(false);
+      router.refresh();
+    });
+  };
+
+  const handleAssign = () => {
+    if (!selectedMachine || !assignProjectId || !assignStart) {
+      setAssignError('Selecciona un proyecto y una fecha de inicio.');
+      return;
+    }
+    setAssignError('');
+    startAssigning(async () => {
+      const result = await assignMachineToProject({
+        machineId: selectedMachine.id,
+        projectId: assignProjectId,
+        startDate: assignStart,
+        endDate: assignEnd || undefined,
+      });
+      if (result.success) {
+        setAssignProjectId('');
+        setAssignEnd('');
+        router.refresh();
+      } else {
+        setAssignError(result.error || 'No se pudo asignar.');
+      }
+    });
+  };
+
+  const handleEndAssignment = (assignmentId: string) => {
+    startAssigning(async () => {
+      await endMachineAssignment(assignmentId);
+      router.refresh();
+    });
+  };
+
+  const handleDeleteAssignment = (assignmentId: string, projectId: string) => {
+    startAssigning(async () => {
+      await deleteMachineAssignment(assignmentId, projectId);
+      router.refresh();
+    });
+  };
 
   if (!selectedMachine) {
     return (
@@ -65,7 +153,7 @@ export default function MachinesClient({
               return (
                 <div
                   key={m.id}
-                  onClick={() => setSelectedMachine(m)}
+                  onClick={() => openMachine(m)}
                   className="rounded-xl p-6 cursor-pointer transition-all overflow-hidden relative border"
                   style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
                   onMouseEnter={e => {
@@ -139,7 +227,7 @@ export default function MachinesClient({
     <div className="space-y-6">
       <div className="flex items-center gap-4 mb-6">
         <button
-          onClick={() => setSelectedMachine(null)}
+          onClick={() => setSelectedMachineId(null)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border"
           style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
@@ -153,8 +241,8 @@ export default function MachinesClient({
       </div>
 
       <div className="flex border-b" style={{ borderColor: 'var(--border)' }}>
-        {(['info', 'materials', 'maintenance', 'docs'] as const).map(tab => {
-          const labels = { info: 'Información', materials: 'Lista de Materiales', maintenance: 'Mantenimiento', docs: 'Documentos' };
+        {(['info', 'materials', 'maintenance', 'assignments', 'docs'] as const).map(tab => {
+          const labels = { info: 'Información', materials: 'Lista de Materiales', maintenance: 'Mantenimiento', assignments: 'Asignaciones a Proyectos', docs: 'Documentos' };
           return (
             <button
               key={tab}
@@ -218,6 +306,40 @@ export default function MachinesClient({
                       <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Nacional</span>
                     )}
                   </div>
+                </div>
+                <div>
+                  <p className="text-sm mb-0.5" style={{ color: 'var(--text-muted)' }}>Tarifa de uso / día</p>
+                  {isEditingRate ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={dailyRate}
+                        onChange={e => setDailyRate(Number(e.target.value))}
+                        className="w-28 rounded-lg px-3 py-1.5 text-sm outline-none"
+                        style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleSaveRate}
+                        disabled={savingRate}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50"
+                        style={{ background: 'var(--accent)' }}
+                      >
+                        OK
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium" style={{ color: 'var(--text-primary)' }}>${(selectedMachine.dailyRate || 0).toLocaleString()}</span>
+                      {role !== 'TECNICO' && (
+                        <button onClick={() => setIsEditingRate(true)} className="text-xs font-bold" style={{ color: 'var(--accent)' }}>
+                          Editar
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -321,6 +443,137 @@ export default function MachinesClient({
                     </p>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'assignments' && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+              Asignaciones a Proyectos
+            </h3>
+
+            {role !== 'TECNICO' && (
+              <div
+                className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-3 mb-4 p-4 rounded-xl border"
+                style={{ background: 'var(--accent-subtle)', borderColor: 'var(--accent)' }}
+              >
+                <div>
+                  <label className="block text-[10px] font-bold mb-1 uppercase" style={{ color: 'var(--text-muted)' }}>Proyecto</label>
+                  <select
+                    value={assignProjectId}
+                    onChange={e => setAssignProjectId(e.target.value)}
+                    className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                    style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  >
+                    <option value="">Selecciona un proyecto...</option>
+                    {projects.map((p: any) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold mb-1 uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                    <Calendar className="w-3 h-3" /> Inicio
+                  </label>
+                  <input
+                    type="date"
+                    value={assignStart}
+                    onChange={e => setAssignStart(e.target.value)}
+                    className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                    style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold mb-1 uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                    <Calendar className="w-3 h-3" /> Fin (opcional)
+                  </label>
+                  <input
+                    type="date"
+                    value={assignEnd}
+                    onChange={e => setAssignEnd(e.target.value)}
+                    className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                    style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={handleAssign}
+                    disabled={!assignProjectId || assigning}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ background: 'var(--accent)' }}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Asignar
+                  </button>
+                </div>
+              </div>
+            )}
+            {assignError && (
+              <p className="text-xs font-bold mb-4 px-1" style={{ color: 'var(--danger)' }}>{assignError}</p>
+            )}
+
+            {(!selectedMachine.assignments || selectedMachine.assignments.length === 0) ? (
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                Esta máquina no ha sido asignada a ningún proyecto todavía.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {selectedMachine.assignments.map((a: any) => {
+                  const isActive = !a.endDate;
+                  const days = daysBetween(a.startDate, a.endDate || new Date());
+                  const cost = days * a.dailyRateSnapshot;
+                  return (
+                    <div
+                      key={a.id}
+                      className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-lg border"
+                      style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{a.project?.name}</p>
+                          {isActive && (
+                            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+                              Activa
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          {formatDateOnly(a.startDate)} — {a.endDate ? formatDateOnly(a.endDate) : 'presente'} ({days} {days === 1 ? 'día' : 'días'})
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>${cost.toLocaleString()}</span>
+                        {role !== 'TECNICO' && (
+                          <>
+                            {isActive && (
+                              <button
+                                onClick={() => handleEndAssignment(a.id)}
+                                disabled={assigning}
+                                className="text-xs font-bold px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
+                                style={{ color: 'var(--accent)' }}
+                              >
+                                Finalizar hoy
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteAssignment(a.id, a.projectId)}
+                              disabled={assigning}
+                              className="p-1.5 rounded-lg transition-colors disabled:opacity-50"
+                              style={{ color: 'var(--text-muted)' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--danger)'; (e.currentTarget as HTMLElement).style.background = 'var(--danger-bg)'; }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.background = ''; }}
+                              title="Eliminar asignación"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

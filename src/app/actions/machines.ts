@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { requireRole } from '@/lib/auth'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { createMachineSchema } from '@/lib/validations'
+import { createMachineSchema, updateMachineDailyRateSchema } from '@/lib/validations'
 import { z } from 'zod'
 
 const ACTIVE_ROLES = ['ADMIN', 'GERENTE', 'TECNICO']
@@ -22,6 +22,10 @@ export async function getMachines() {
         documents: true,
         maintenances: {
           orderBy: { date: 'desc' }
+        },
+        assignments: {
+          include: { project: { select: { id: true, name: true } } },
+          orderBy: { startDate: 'desc' }
         }
       }
     })
@@ -47,6 +51,29 @@ export async function createMachine(data: { name: string, serialNumber: string, 
       return { success: false, error: error.message }
     }
     return { success: false, error: 'No se pudo crear la máquina. El número de serie podría estar duplicado.' }
+  }
+}
+
+export async function updateMachineDailyRate(machineId: string, dailyRate: number) {
+  try {
+    await requireRole(['ADMIN', 'GERENTE'])
+    const valid = updateMachineDailyRateSchema.parse({ machineId, dailyRate })
+
+    await prisma.machine.update({
+      where: { id: valid.machineId },
+      data: { dailyRate: valid.dailyRate }
+    })
+
+    revalidatePath('/maquinas')
+    return { success: true }
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: 'Tarifa inválida.' }
+    }
+    if (error instanceof Error && error.message.includes('permisos')) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'No se pudo actualizar la tarifa.' }
   }
 }
 

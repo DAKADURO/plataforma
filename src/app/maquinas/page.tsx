@@ -1,12 +1,14 @@
 import { getMachines } from '@/app/actions/machines'
 import { getProducts } from '@/app/actions/almacen'
+import { getProjects } from '@/app/actions/projects'
 import { getCurrentUserRole } from '@/lib/auth'
 import MachinesClient from '@/components/maquinas/MachinesClient'
 
 export default async function MachinesPage() {
-  const [machines, products, role] = await Promise.all([
+  const [machines, products, projects, role] = await Promise.all([
     getMachines(),
     getProducts('Todas', 'Todos'),
+    getProjects(),
     getCurrentUserRole()
   ]);
 
@@ -20,9 +22,10 @@ export default async function MachinesPage() {
       </header>
 
       <main>
-        <MachinesClient 
+        <MachinesClient
           machines={machines}
           products={products}
+          projects={projects}
           role={role || 'TECNICO'}
         />
       </main>
