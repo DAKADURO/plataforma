@@ -57,28 +57,54 @@ export async function createProduct(data: { sku: string, name: string, category:
   }
 }
 
-export async function createMovement(data: { productId: string, quantity: number, type: 'ENTRADA' | 'SALIDA', projectId?: string }) {
+export async function createMovement(data: { productId: string, quantity: number, type: 'ENTRADA' | 'SALIDA', projectId?: string, notes?: string }) {
   try {
     // [SEC-FIX #2] createMovement estaba DESPROTEGIDA — se requiere rol activo
     await requireRole(ACTIVE_ROLES)
-    
+
+    const { createSupabaseServerClient } = await import('@/lib/supabase-server')
+    const supabase = await createSupabaseServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const dbUser = user ? await prisma.user.findUnique({ where: { email: user.email! } }) : null
+
     await prisma.$transaction(async (tx: any) => {
       await tx.inventory.create({
         data: {
           productId: data.productId,
           quantity: data.quantity,
           type: data.type,
-          projectId: data.projectId || null
+          projectId: data.projectId || null,
+          userId: dbUser?.id,
+          notes: data.notes || null
         }
       })
-      
+
+      const product = await tx.product.findUnique({ where: { id: data.productId } })
       const stockChange = data.type === 'ENTRADA' ? data.quantity : -data.quantity
+      const newStock = Math.max(0, (product?.stock || 0) + stockChange)
+
       await tx.product.update({
         where: { id: data.productId },
         data: {
-          stock: { increment: stockChange }
+          stock: newStock
         }
       })
+
+      // Check if stock is now low and create alert if enabled
+      if (product?.isAlertEnabled && newStock <= product.minStock) {
+        const existingAlert = await tx.reorderAlert.findFirst({
+          where: { productId: data.productId, status: 'ACTIVE' }
+        })
+        if (!existingAlert) {
+          await tx.reorderAlert.create({
+            data: {
+              productId: data.productId,
+              alertType: newStock === 0 ? 'OUT_OF_STOCK' : 'LOW_STOCK',
+              severity: newStock === 0 ? 'CRITICAL' : 'WARNING'
+            }
+          })
+        }
+      }
     })
 
     revalidatePath('/almacen')
@@ -105,5 +131,127 @@ export async function deleteProduct(id: string) {
       return { success: false, error: error.message }
     }
     return { success: false, error: 'No se pudo eliminar. Es posible que el producto tenga movimientos o máquinas asociadas.' }
+  }
+}
+
+// ==========================================
+// Alert Management (Phase 1: Stock Alerts)
+// ==========================================
+
+export async function getAlerts() {
+  try {
+    await requireRole(['ADMIN', 'GERENTE'])
+    const alerts = await prisma.reorderAlert.findMany({
+      include: {
+        product: { select: { id: true, name: true, sku: true, stock: true, minStock: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+    return { success: true, alerts }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('permisos')) {
+      return { success: false, error: error.message, alerts: [] }
+    }
+    return { success: false, error: 'No se pudo obtener alertas.', alerts: [] }
+  }
+}
+
+export async function getLowStockProducts() {
+  try {
+    await requireRole(ACTIVE_ROLES)
+    const products = await prisma.product.findMany({
+      where: {
+        isAlertEnabled: true,
+        stock: { lte: prisma.product.fields.minStock }
+      },
+      include: {
+        alerts: { where: { status: 'ACTIVE' }, take: 1 }
+      },
+      orderBy: [{ stock: 'asc' }],
+      take: 10
+    })
+    return { success: true, products }
+  } catch (error) {
+    return { success: false, error: 'No se pudo obtener productos con bajo stock.', products: [] }
+  }
+}
+
+export async function acknowledgeAlert(alertId: string) {
+  try {
+    await requireRole(['ADMIN', 'GERENTE'])
+    const { createSupabaseServerClient } = await import('@/lib/supabase-server')
+    const supabase = await createSupabaseServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const dbUser = user ? await prisma.user.findUnique({ where: { email: user.email! } }) : null
+
+    await prisma.reorderAlert.update({
+      where: { id: alertId },
+      data: {
+        status: 'ACKNOWLEDGED',
+        acknowledgedBy: dbUser?.id,
+        acknowledgedAt: new Date()
+      }
+    })
+
+    revalidatePath('/almacen')
+    return { success: true }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('permisos')) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'No se pudo reconocer la alerta.' }
+  }
+}
+
+export async function resolveAlert(alertId: string) {
+  try {
+    await requireRole(['ADMIN', 'GERENTE'])
+    await prisma.reorderAlert.update({
+      where: { id: alertId },
+      data: {
+        status: 'RESOLVED',
+        resolvedAt: new Date()
+      }
+    })
+
+    revalidatePath('/almacen')
+    return { success: true }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('permisos')) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'No se pudo resolver la alerta.' }
+  }
+}
+
+export async function getMovementHistory(productId: string, limit: number = 20) {
+  try {
+    await requireRole(ACTIVE_ROLES)
+    const movements = await prisma.inventory.findMany({
+      where: { productId },
+      include: {
+        user: { select: { id: true, email: true } },
+        project: { select: { id: true, name: true } }
+      },
+      orderBy: { date: 'desc' },
+      take: limit
+    })
+    return { success: true, movements }
+  } catch (error) {
+    return { success: false, error: 'No se pudo obtener el historial.', movements: [] }
+  }
+}
+
+export async function updateProductAlertSettings(productId: string, isAlertEnabled: boolean) {
+  try {
+    await requireRole(['ADMIN', 'GERENTE'])
+    await prisma.product.update({
+      where: { id: productId },
+      data: { isAlertEnabled }
+    })
+    revalidatePath('/almacen')
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: 'No se pudo actualizar configuración de alertas.' }
   }
 }

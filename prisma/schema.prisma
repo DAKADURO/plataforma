@@ -15,6 +15,7 @@ model User {
   role      String     @default("PENDIENTE") // ADMIN, GERENTE, TECNICO, PENDIENTE
   logs      AuditLog[]
   assignedProjects Project[] @relation("ProjectTeam")
+  movements Inventory[]  // Movements this user made
 }
 
 model AuditLog {
@@ -151,8 +152,11 @@ model Product {
   minStock   Int         @default(5)
   stock      Int         @default(0)
   cost       Float       @default(0) // Costo unitario para control financiero
+  lastAlertedDate DateTime?
+  isAlertEnabled Boolean @default(true)
   inventory        Inventory[]
   machineMaterials MachineMaterial[]
+  alerts ReorderAlert[]
 
   @@index([category])
   @@index([department])
@@ -165,11 +169,16 @@ model Inventory {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict) // Prevent deleting products with history
   projectId String?  // Puede estar asignado a un proyecto
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)  // If project is deleted, keep the movement record but unlink it
+  userId    String?  // Who made the movement
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   quantity  Int
   type      String   // ENTRADA, SALIDA
   date      DateTime @default(now())
+  notes     String?  // Optional reason/notes for the movement
+  isManual  Boolean  @default(true)
 
   @@index([productId])
+  @@index([userId])
   @@index([projectId])
   @@index([type])
 }
@@ -280,4 +289,23 @@ model ProposalMaterial {
   unitPrice  Float    @default(0)
 
   @@index([proposalId])
+}
+
+// =======================
+// Almacén: Alertas de Reposición
+// =======================
+model ReorderAlert {
+  id String @id @default(uuid())
+  productId String
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  alertType String        // "LOW_STOCK", "OUT_OF_STOCK"
+  severity String         // "WARNING", "CRITICAL"
+  status String @default("ACTIVE") // "ACTIVE", "ACKNOWLEDGED", "RESOLVED"
+  createdAt DateTime @default(now())
+  resolvedAt DateTime?
+  acknowledgedBy String?
+  acknowledgedAt DateTime?
+
+  @@index([productId])
+  @@index([status])
 }
