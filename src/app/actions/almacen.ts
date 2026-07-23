@@ -4,6 +4,8 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { requireRole } from '@/lib/auth'
+import { createProductSchema } from '@/lib/validations'
+import { z } from 'zod'
 
 // [SEC-FIX #1] Roles activos del sistema (excluye PENDIENTE)
 const ACTIVE_ROLES = ['ADMIN', 'GERENTE', 'TECNICO']
@@ -47,11 +49,15 @@ export async function getCategories() {
 export async function createProduct(data: { sku: string, name: string, category: string, department: string, itemType: string, minStock: number }) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
-    await prisma.product.create({ data })
+    const validData = createProductSchema.parse(data)
+    await prisma.product.create({ data: validData })
     revalidatePath('/almacen')
     revalidatePath('/maquinas')
     return { success: true }
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: 'Datos del producto inválidos.' }
+    }
     // [SEC-FIX #5] Sanitizar errores internos de Prisma
     if (error instanceof Error && error.message.includes('permisos')) {
       return { success: false, error: error.message }
@@ -64,6 +70,10 @@ export async function createMovement(data: { productId: string, quantity: number
   try {
     // [SEC-FIX #2] createMovement estaba DESPROTEGIDA — se requiere rol activo
     await requireRole(ACTIVE_ROLES)
+
+    if (!Number.isFinite(data.quantity) || data.quantity <= 0) {
+      return { success: false, error: 'La cantidad debe ser un número positivo mayor a cero.' }
+    }
 
     const { createSupabaseServerClient } = await import('@/lib/supabase-server')
     const supabase = await createSupabaseServerClient()
@@ -82,19 +92,15 @@ export async function createMovement(data: { productId: string, quantity: number
         }
       })
 
-      const product = await tx.product.findUnique({ where: { id: data.productId } })
+      // Actualización atómica del stock (evita condiciones de carrera entre movimientos concurrentes)
       const stockChange = data.type === 'ENTRADA' ? data.quantity : -data.quantity
-      const newStock = Math.max(0, (product?.stock || 0) + stockChange)
-
-      await tx.product.update({
+      const product = await tx.product.update({
         where: { id: data.productId },
-        data: {
-          stock: newStock
-        }
+        data: { stock: { increment: stockChange } }
       })
 
       // Check if stock is now low and create alert if enabled
-      if (product?.isAlertEnabled && newStock <= product.minStock) {
+      if (product?.isAlertEnabled && product.stock <= product.minStock) {
         const existingAlert = await tx.reorderAlert.findFirst({
           where: { productId: data.productId, status: 'ACTIVE' }
         })
@@ -102,8 +108,8 @@ export async function createMovement(data: { productId: string, quantity: number
           await tx.reorderAlert.create({
             data: {
               productId: data.productId,
-              alertType: newStock === 0 ? 'OUT_OF_STOCK' : 'LOW_STOCK',
-              severity: newStock === 0 ? 'CRITICAL' : 'WARNING'
+              alertType: product.stock <= 0 ? 'OUT_OF_STOCK' : 'LOW_STOCK',
+              severity: product.stock <= 0 ? 'CRITICAL' : 'WARNING'
             }
           })
         }

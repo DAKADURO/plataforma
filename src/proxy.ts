@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
-  const protectedRoutes = ['/proyectos', '/almacen', '/clientes', '/analiticas', '/visor', '/usuarios']
+  const protectedRoutes = ['/proyectos', '/almacen', '/clientes', '/analiticas', '/visor', '/usuarios', '/maquinas', '/propuestas']
   const isProtected = protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
   if (isProtected) {

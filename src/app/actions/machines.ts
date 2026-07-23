@@ -4,6 +4,9 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { requireRole } from '@/lib/auth'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createMachineSchema } from '@/lib/validations'
+import { z } from 'zod'
 
 const ACTIVE_ROLES = ['ADMIN', 'GERENTE', 'TECNICO']
 
@@ -32,10 +35,14 @@ export async function getMachines() {
 export async function createMachine(data: { name: string, serialNumber: string, category: string, brand?: string, model?: string, imageUrl?: string, isImported?: boolean }) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
-    await prisma.machine.create({ data })
+    const validData = createMachineSchema.parse(data)
+    await prisma.machine.create({ data: validData })
     revalidatePath('/maquinas')
     return { success: true }
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: 'Datos de la máquina inválidos.' }
+    }
     if (error instanceof Error && error.message.includes('permisos')) {
       return { success: false, error: error.message }
     }
@@ -46,6 +53,11 @@ export async function createMachine(data: { name: string, serialNumber: string, 
 export async function addMachineMaterial(machineId: string, productId: string | undefined, name: string | undefined, quantity: number) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      return { success: false, error: 'La cantidad debe ser un número positivo mayor a cero.' }
+    }
+
     await prisma.machineMaterial.create({
       data: { machineId, productId: productId || null, name: name || null, quantity }
     })
@@ -59,10 +71,18 @@ export async function addMachineMaterial(machineId: string, productId: string | 
   }
 }
 
-export async function addMaintenanceLog(data: { machineId: string, type: string, description: string, performedBy: string }) {
+export async function addMaintenanceLog(data: { machineId: string, type: string, description: string }) {
   try {
     await requireRole(ACTIVE_ROLES)
-    await prisma.maintenanceLog.create({ data })
+
+    // [SEC-FIX] performedBy ya NO se acepta del cliente — se resuelve en el servidor
+    const supabase = await createSupabaseServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user?.email) {
+      return { success: false, error: 'No se pudo verificar la identidad del usuario.' }
+    }
+
+    await prisma.maintenanceLog.create({ data: { ...data, performedBy: user.email } })
     // Optionally update machine status to ACTIVA if it was MANTENIMIENTO
     revalidatePath('/maquinas')
     return { success: true }

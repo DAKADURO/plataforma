@@ -5,14 +5,22 @@ const transaction = vi.fn()
 const productDelete = vi.fn()
 const inventoryCreate = vi.fn()
 const productUpdate = vi.fn()
+const getUser = vi.fn()
+const userFindUnique = vi.fn()
 
 vi.mock('@/lib/auth', () => ({ requireRole }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+vi.mock('@/lib/supabase-server', () => ({
+  createSupabaseServerClient: async () => ({
+    auth: { getUser },
+  }),
+}))
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     $transaction: transaction,
     product: { delete: productDelete },
     inventory: { create: inventoryCreate },
+    user: { findUnique: userFindUnique },
   },
 }))
 
@@ -24,6 +32,8 @@ describe('createMovement', () => {
     transaction.mockReset()
     inventoryCreate.mockReset()
     productUpdate.mockReset()
+    getUser.mockReset().mockResolvedValue({ data: { user: null } })
+    userFindUnique.mockReset()
   })
 
   it('requires an active role before touching the database', async () => {

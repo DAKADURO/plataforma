@@ -8,7 +8,6 @@ import Button from '@/components/ui/Button';
 export default function MaintenanceModal({ isOpen, onClose, machineId }: { isOpen: boolean; onClose: () => void; machineId: string }) {
   const [type, setType] = useState('PREVENTIVO');
   const [description, setDescription] = useState('');
-  const [performedBy, setPerformedBy] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -19,12 +18,11 @@ export default function MaintenanceModal({ isOpen, onClose, machineId }: { isOpe
     setLoading(true);
     setError('');
 
-    const res = await addMaintenanceLog({ machineId, type, description, performedBy });
+    const res = await addMaintenanceLog({ machineId, type, description });
     setLoading(false);
 
     if (res.success) {
       setDescription('');
-      setPerformedBy('');
       onClose();
     } else {
       setError(res.error || 'Error al registrar mantenimiento');
@@ -59,13 +57,6 @@ export default function MaintenanceModal({ isOpen, onClose, machineId }: { isOpe
               placeholder="Detalles de lo realizado..."
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Realizado por (Nombre)</label>
-            <input required type="text" value={performedBy} onChange={e => setPerformedBy(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            />
-          </div>
-          
           <div className="pt-4 flex justify-end gap-3">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">
               Cancelar

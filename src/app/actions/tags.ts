@@ -3,6 +3,8 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { requireRole } from '@/lib/auth'
+import { createTagSchema } from '@/lib/validations'
+import { z } from 'zod'
 
 const ACTIVE_ROLES = ['ADMIN', 'GERENTE', 'TECNICO']
 
@@ -24,6 +26,7 @@ export async function getTags() {
 export async function createTag(data: { name: string; description?: string; color?: string }) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
+    const validData = createTagSchema.parse(data)
     const { createSupabaseServerClient } = await import('@/lib/supabase-server')
     const supabase = await createSupabaseServerClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -35,9 +38,9 @@ export async function createTag(data: { name: string; description?: string; colo
 
     const tag = await prisma.tag.create({
       data: {
-        name: data.name,
-        description: data.description,
-        color: data.color,
+        name: validData.name,
+        description: validData.description,
+        color: validData.color,
         createdBy: dbUser.id
       }
     })
@@ -45,6 +48,9 @@ export async function createTag(data: { name: string; description?: string; colo
     revalidatePath('/almacen')
     return { success: true, tag }
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: 'Datos de la etiqueta inválidos.' }
+    }
     if (error instanceof Error && error.message.includes('Unique constraint failed')) {
       return { success: false, error: 'Ya existe una etiqueta con este nombre.' }
     }
@@ -58,13 +64,17 @@ export async function createTag(data: { name: string; description?: string; colo
 export async function updateTag(tagId: string, data: { name?: string; description?: string; color?: string }) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
+    const validData = createTagSchema.partial().parse(data)
     const tag = await prisma.tag.update({
       where: { id: tagId },
-      data
+      data: validData
     })
     revalidatePath('/almacen')
     return { success: true, tag }
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: 'Datos de la etiqueta inválidos.' }
+    }
     if (error instanceof Error && error.message.includes('permisos')) {
       return { success: false, error: error.message }
     }
