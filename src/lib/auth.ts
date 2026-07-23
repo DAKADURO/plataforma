@@ -1,7 +1,8 @@
+import { cache } from 'react'
 import { createSupabaseServerClient } from './supabase-server'
 import { prisma } from './prisma'
 
-export async function getCurrentUserRole() {
+export const getCurrentUserRole = cache(async () => {
   try {
     const supabase = await createSupabaseServerClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -16,7 +17,7 @@ export async function getCurrentUserRole() {
   } catch {
     return null
   }
-}
+})
 
 export async function requireRole(allowedRoles: string[]) {
   const role = await getCurrentUserRole()

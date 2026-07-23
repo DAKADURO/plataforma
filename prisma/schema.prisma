@@ -183,6 +183,8 @@ model Inventory {
   @@index([userId])
   @@index([projectId])
   @@index([type])
+  @@index([date])
+  @@index([productId, date])
 }
 
 // =======================

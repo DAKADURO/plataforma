@@ -5,13 +5,29 @@ import { requireRole } from '@/lib/auth'
 
 const ACTIVE_ROLES = ['ADMIN', 'GERENTE', 'TECNICO']
 
+// Shared by getInventoryStats/getDepartmentStats/getReorderingMetrics so the reports
+// page doesn't scan the whole Product+Inventory table three times per load.
+function getProductsForReports() {
+  return prisma.product.findMany({
+    select: {
+      id: true,
+      name: true,
+      sku: true,
+      department: true,
+      stock: true,
+      cost: true,
+      minStock: true,
+      inventory: { select: { type: true, quantity: true, date: true } },
+      alerts: { where: { status: { in: ['ACTIVE', 'ACKNOWLEDGED'] } }, select: { id: true, status: true } }
+    }
+  })
+}
+
 export async function getInventoryStats() {
   try {
     await requireRole(ACTIVE_ROLES)
 
-    const products = await prisma.product.findMany({
-      include: { alerts: { where: { status: 'ACTIVE' } } }
-    })
+    const products = await getProductsForReports()
 
     const totalValue = products.reduce((sum, p) => sum + (p.stock * p.cost), 0)
     const lowStockCount = products.filter(p => p.stock <= p.minStock).length
@@ -93,15 +109,6 @@ export async function getStockHistory(productId: string, days: number = 30) {
     const fromDate = new Date()
     fromDate.setDate(fromDate.getDate() - days)
 
-    const movements = await prisma.inventory.findMany({
-      where: {
-        productId,
-        date: { gte: fromDate }
-      },
-      include: { product: true },
-      orderBy: { date: 'asc' }
-    })
-
     const product = await prisma.product.findUnique({ where: { id: productId } })
     if (!product) throw new Error('Producto no encontrado')
 
@@ -109,7 +116,7 @@ export async function getStockHistory(productId: string, days: number = 30) {
     let currentStock = product.stock
     const history = []
 
-    // Get all movements
+    // Get all movements (needed to compute the accurate starting stock for the period)
     const allMovements = await prisma.inventory.findMany({
       where: { productId },
       orderBy: { date: 'asc' }
@@ -165,11 +172,7 @@ export async function getDepartmentStats() {
   try {
     await requireRole(ACTIVE_ROLES)
 
-    const products = await prisma.product.findMany({
-      include: {
-        inventory: true
-      }
-    })
+    const products = await getProductsForReports()
 
     const departmentStats: Record<string, {
       itemCount: number;
@@ -221,12 +224,7 @@ export async function getReorderingMetrics() {
   try {
     await requireRole(ACTIVE_ROLES)
 
-    const products = await prisma.product.findMany({
-      include: {
-        inventory: true,
-        alerts: { where: { status: { in: ['ACTIVE', 'ACKNOWLEDGED'] } } }
-      }
-    })
+    const products = await getProductsForReports()
 
     const frequentlyReordered = products
       .filter(p => p.inventory.some(m => m.type === 'ENTRADA'))
