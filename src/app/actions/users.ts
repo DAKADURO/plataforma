@@ -4,7 +4,7 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { requireRole } from '@/lib/auth'
-import { updateUserRoleSchema } from '@/lib/validations'
+import { updateUserRoleSchema, updateUserHourlyCostSchema } from '@/lib/validations'
 import { z } from 'zod'
 
 export async function getUsers() {
@@ -36,6 +36,29 @@ export async function updateUserRole(userId: string, newRole: string) {
       return { success: false, error: error.message }
     }
     return { success: false, error: 'No se pudo actualizar el rol.' }
+  }
+}
+
+export async function updateUserHourlyCost(userId: string, hourlyCost: number) {
+  try {
+    await requireRole(['ADMIN'])
+    const valid = updateUserHourlyCostSchema.parse({ userId, hourlyCost })
+
+    await prisma.user.update({
+      where: { id: valid.userId },
+      data: { hourlyCost: valid.hourlyCost }
+    })
+
+    revalidatePath('/usuarios')
+    return { success: true }
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: 'Costo por hora inválido.' }
+    }
+    if (error instanceof Error && error.message.includes('permisos')) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'No se pudo actualizar el costo por hora.' }
   }
 }
 

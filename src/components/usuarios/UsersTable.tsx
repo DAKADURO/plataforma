@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { updateUserRole } from '@/app/actions/users';
-import { Shield, UserCog, Mail, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { updateUserRole, updateUserHourlyCost } from '@/app/actions/users';
+import { Shield, UserCog, Mail, AlertTriangle, CheckCircle2, DollarSign } from 'lucide-react';
 
 type User = {
   id: string;
   email: string;
   role: string;
+  hourlyCost: number;
 };
 
 const ROLES = [
@@ -28,6 +29,25 @@ export default function UsersTable({ initialUsers }: { initialUsers: User[] }) {
       const res = await updateUserRole(userId, newRole);
       if (res.success) {
         setFeedback({ id: userId, type: 'success', msg: 'Rol actualizado' });
+      } else {
+        setFeedback({ id: userId, type: 'error', msg: res.error || 'Error' });
+        setUsers(initialUsers);
+      }
+      setTimeout(() => setFeedback(null), 3000);
+    });
+  };
+
+  const handleHourlyCostChange = (userId: string, value: string) => {
+    const hourlyCost = Number(value);
+    if (!Number.isFinite(hourlyCost) || hourlyCost < 0) return;
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, hourlyCost } : u));
+  };
+
+  const handleHourlyCostSave = (userId: string, hourlyCost: number) => {
+    startTransition(async () => {
+      const res = await updateUserHourlyCost(userId, hourlyCost);
+      if (res.success) {
+        setFeedback({ id: userId, type: 'success', msg: 'Costo/hora actualizado' });
       } else {
         setFeedback({ id: userId, type: 'error', msg: res.error || 'Error' });
         setUsers(initialUsers);
@@ -93,6 +113,23 @@ export default function UsersTable({ initialUsers }: { initialUsers: User[] }) {
                   {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
                 </select>
               </div>
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={user.hourlyCost}
+                  disabled={isPending}
+                  onChange={e => handleHourlyCostChange(user.id, e.target.value)}
+                  onBlur={e => handleHourlyCostSave(user.id, Number(e.target.value))}
+                  className="flex-1 text-xs rounded-lg px-3 py-1.5 outline-none disabled:opacity-50"
+                  style={{ background: 'var(--bg-surface-alt)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                  title="Costo por hora"
+                />
+                <span className="text-[10px] font-bold shrink-0" style={{ color: 'var(--text-muted)' }}>/hora</span>
+              </div>
             </div>
           );
         })}
@@ -114,6 +151,7 @@ export default function UsersTable({ initialUsers }: { initialUsers: User[] }) {
             >
               <th className="px-6 py-4 font-bold">Usuario / Email</th>
               <th className="px-6 py-4 font-bold">Rol Actual</th>
+              <th className="px-6 py-4 font-bold">Costo/Hora</th>
               <th className="px-6 py-4 font-bold text-right">Asignar Rol</th>
             </tr>
           </thead>
@@ -152,6 +190,25 @@ export default function UsersTable({ initialUsers }: { initialUsers: User[] }) {
                       <Shield className="w-3.5 h-3.5" />
                       {user.role}
                     </span>
+                  </td>
+
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-1.5">
+                      <DollarSign className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={user.hourlyCost}
+                        disabled={isPending}
+                        onChange={e => handleHourlyCostChange(user.id, e.target.value)}
+                        onBlur={e => handleHourlyCostSave(user.id, Number(e.target.value))}
+                        className="w-24 text-sm rounded-lg px-3 py-1.5 outline-none disabled:opacity-50"
+                        style={{ background: 'var(--bg-surface-alt)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                        onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                        title="Costo por hora"
+                      />
+                    </div>
                   </td>
 
                   <td className="px-6 py-5 text-right">
@@ -196,7 +253,7 @@ export default function UsersTable({ initialUsers }: { initialUsers: User[] }) {
 
             {users.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-6 py-12 text-center" style={{ color: 'var(--text-muted)' }}>
+                <td colSpan={4} className="px-6 py-12 text-center" style={{ color: 'var(--text-muted)' }}>
                   <UserCog className="w-12 h-12 mx-auto mb-3 opacity-30" />
                   <p>No hay usuarios registrados.</p>
                 </td>

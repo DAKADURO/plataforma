@@ -50,6 +50,20 @@ export const createMachineSchema = z.object({
   isImported: z.boolean().optional(),
 });
 
+// Work Log Schema (horas de mano de obra)
+export const createWorkLogSchema = z.object({
+  projectId: z.string().uuid("ID de proyecto inválido"),
+  date: z.coerce.date(),
+  hours: z.number().positive("Las horas deben ser mayores a cero").max(24, "Máximo 24 horas por registro"),
+  description: z.string().max(250).optional(),
+});
+
+// User Hourly Cost Schema
+export const updateUserHourlyCostSchema = z.object({
+  userId: z.string().uuid("ID de usuario inválido"),
+  hourlyCost: z.number().min(0, "El costo por hora no puede ser negativo").max(100000),
+});
+
 // User Role Schema
 export const updateUserRoleSchema = z.object({
   userId: z.string().uuid("ID de usuario inválido"),

@@ -55,6 +55,10 @@ export async function getProjectById(id: string) {
       },
       notes: {
         orderBy: { createdAt: 'desc' }
+      },
+      workLogs: {
+        include: { user: { select: { email: true } } },
+        orderBy: { date: 'desc' }
       }
     }
   })

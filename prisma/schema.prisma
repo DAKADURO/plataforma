@@ -13,10 +13,12 @@ model User {
   id        String     @id @default(uuid())
   email     String     @unique
   role      String     @default("PENDIENTE") // ADMIN, GERENTE, TECNICO, PENDIENTE
+  hourlyCost Float     @default(0) // Costo por hora (confidencial, solo ADMIN lo edita)
   logs      AuditLog[]
   assignedProjects Project[] @relation("ProjectTeam")
   movements Inventory[]  // Movements this user made
   createdTags Tag[]      // Tags this user created
+  workLogs  WorkLog[]    // Horas trabajadas registradas
 }
 
 model AuditLog {
@@ -58,9 +60,32 @@ model Project {
   inventory   Inventory[]
   departments ProjectDepartment[]
   notes       ProjectNote[]
+  workLogs    WorkLog[]
 
   @@index([clientId])
   @@index([status])
+}
+
+// =======================
+// Horas de Mano de Obra por Proyecto
+// =======================
+model WorkLog {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime @default(now())
+  hours       Float
+  description String?
+  // Costo/hora congelado al momento del registro: si después cambia la tarifa
+  // del usuario, los costos históricos de proyectos ya cerrados no se alteran.
+  hourlyCostSnapshot Float @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([projectId, date])
 }
 
 // =======================

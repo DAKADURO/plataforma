@@ -5,6 +5,7 @@ import React, { useState, useTransition } from 'react';
 import { updateProjectStatus, updateProjectBudget } from '@/app/actions/projects';
 import { addProjectNote } from '@/app/actions/projects';
 import { createTask, updateTask, deleteTask } from '@/app/actions/tasks';
+import { addWorkLog, deleteWorkLog } from '@/app/actions/worklogs';
 import {
   ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, XCircle,
   Users, Package, FileText, UploadCloud,
@@ -64,6 +65,15 @@ type ProjectNote = {
   createdAt: Date;
 };
 
+type WorkLog = {
+  id: string;
+  date: Date;
+  hours: number;
+  description: string | null;
+  hourlyCostSnapshot: number;
+  user: { email: string };
+};
+
 type Project = {
   id: string;
   name: string;
@@ -76,6 +86,7 @@ type Project = {
   documents: ProjectDocument[];
   departments: ProjectDepartment[];
   notes: ProjectNote[];
+  workLogs: WorkLog[];
 };
 
 // ---- Helper ----
@@ -249,7 +260,20 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
 
   const [budget, setBudget] = useState(project.budget || 0);
   const [isEditingBudget, setIsEditingBudget] = useState(false);
-  const totalCost = project.inventory.reduce((sum, inv) => sum + inv.quantity * (inv.product?.cost || 0), 0);
+
+  const [workLogs, setWorkLogs] = useState<WorkLog[]>(project.workLogs || []);
+  const [newLogDate, setNewLogDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [newLogHours, setNewLogHours] = useState('');
+  const [newLogDesc, setNewLogDesc] = useState('');
+  const [addingLog, startAddingLog] = useTransition();
+  const [logError, setLogError] = useState('');
+
+  // Los montos de mano de obra son confidenciales: solo ADMIN/GERENTE los ven
+  const canSeeMoney = role !== 'TECNICO';
+  const materialCost = project.inventory.reduce((sum, inv) => sum + inv.quantity * (inv.product?.cost || 0), 0);
+  const laborCost = workLogs.reduce((sum, w) => sum + w.hours * w.hourlyCostSnapshot, 0);
+  const totalHours = workLogs.reduce((sum, w) => sum + w.hours, 0);
+  const totalCost = canSeeMoney ? materialCost + laborCost : materialCost;
   const remainingBudget = budget - totalCost;
   const isOverBudget = remainingBudget < 0;
 
@@ -352,6 +376,33 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
     setNewNote('');
     await addProjectNote(project.id, contentToSend, 'Usuario');
     setAddingNote(false);
+  };
+
+  const handleAddWorkLog = () => {
+    const hours = Number(newLogHours);
+    if (!newLogDate || !Number.isFinite(hours) || hours <= 0) {
+      setLogError('Indica una fecha y horas válidas (mayores a cero).');
+      return;
+    }
+    setLogError('');
+    const desc = newLogDesc.trim();
+    startAddingLog(async () => {
+      const result = await addWorkLog({ projectId: project.id, date: newLogDate, hours, description: desc || undefined });
+      if (result.success && result.workLog) {
+        setWorkLogs(prev => [result.workLog as WorkLog, ...prev]);
+        setNewLogHours('');
+        setNewLogDesc('');
+      } else {
+        setLogError(result.error || 'No se pudo registrar.');
+      }
+    });
+  };
+
+  const handleDeleteWorkLog = (id: string) => {
+    setWorkLogs(prev => prev.filter(w => w.id !== id));
+    startAddingLog(async () => {
+      await deleteWorkLog(id, project.id);
+    });
   };
 
   const sectionStyle = { background: 'var(--bg-surface)', borderColor: 'var(--border)' };
@@ -649,8 +700,17 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
 
             <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
               <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>Costo Materiales (Real)</span>
-              <div className="text-2xl font-black" style={{ color: 'var(--text-secondary)' }}>${totalCost.toLocaleString()}</div>
+              <div className="text-2xl font-black" style={{ color: 'var(--text-secondary)' }}>${materialCost.toLocaleString()}</div>
             </div>
+
+            {canSeeMoney && (
+              <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>
+                  Costo Mano de Obra ({totalHours.toLocaleString()} h)
+                </span>
+                <div className="text-2xl font-black" style={{ color: 'var(--text-secondary)' }}>${laborCost.toLocaleString()}</div>
+              </div>
+            )}
 
             <div
               className="p-4 rounded-xl border"
@@ -858,6 +918,135 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
                 </div>
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* ── REGISTRO DE HORAS (MANO DE OBRA) ── */}
+      <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+          <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
+            <Clock className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+            Registro de Horas
+          </h2>
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            {totalHours.toLocaleString()} {totalHours === 1 ? 'hora registrada' : 'horas registradas'}
+          </span>
+        </div>
+
+        {/* Add Work Log Row */}
+        <div
+          className="grid grid-cols-1 md:grid-cols-[1fr_1fr_2fr_auto] gap-3 mb-4 p-4 rounded-xl border"
+          style={{ background: 'var(--accent-subtle)', borderColor: 'var(--accent)' }}
+        >
+          <div>
+            <label className="block text-[10px] font-bold mb-1 uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+              <Calendar className="w-3 h-3" /> Fecha
+            </label>
+            <input type="date" value={newLogDate} onChange={e => setNewLogDate(e.target.value)} style={inputFieldStyle}
+              onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')} />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold mb-1 uppercase" style={{ color: 'var(--text-muted)' }}>Horas</label>
+            <input
+              type="number"
+              min="0.5"
+              max="24"
+              step="0.5"
+              placeholder="ej. 8"
+              value={newLogHours}
+              onChange={e => setNewLogHours(e.target.value)}
+              style={inputFieldStyle}
+              onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold mb-1 uppercase" style={{ color: 'var(--text-muted)' }}>Descripción (opcional)</label>
+            <input
+              type="text"
+              placeholder="ej. Cableado de tablero principal"
+              value={newLogDesc}
+              onChange={e => setNewLogDesc(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddWorkLog()}
+              style={inputFieldStyle}
+              onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={handleAddWorkLog}
+              disabled={!newLogHours || addingLog}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: 'var(--accent)' }}
+            >
+              <Plus className="w-4 h-4" />
+              Registrar
+            </button>
+          </div>
+        </div>
+        {logError && (
+          <p className="text-xs font-bold mb-4 px-1" style={{ color: 'var(--danger)' }}>{logError}</p>
+        )}
+
+        {/* Work Log List */}
+        {workLogs.length === 0 ? (
+          <div className="text-center p-12 border-2 border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+            <Clock className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <p className="font-medium">Sin horas registradas aún.</p>
+            <p className="text-sm mt-1 opacity-70">Registra las horas trabajadas en este proyecto para conocer su costo real.</p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+            {workLogs.map(log => (
+              <div
+                key={log.id}
+                className="grid grid-cols-1 md:grid-cols-[1fr_2fr_2fr_1fr_auto] gap-3 items-center p-4 rounded-2xl border"
+                style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
+              >
+                <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                  {new Date(log.date).toLocaleDateString()}
+                </span>
+                <span className="text-xs truncate" title={log.user.email} style={{ color: 'var(--text-muted)' }}>
+                  {log.user.email}
+                </span>
+                <span className="text-xs line-clamp-1" style={{ color: 'var(--text-secondary)' }}>
+                  {log.description || <span className="italic opacity-60">Sin descripción</span>}
+                </span>
+                <div className="flex items-center gap-2 justify-end">
+                  <span className="text-sm font-black px-2 py-0.5 rounded border" style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', borderColor: 'var(--accent)' }}>
+                    {log.hours} h
+                  </span>
+                  {canSeeMoney && (
+                    <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
+                      ${(log.hours * log.hourlyCostSnapshot).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+                {canSeeMoney ? (
+                  <button
+                    onClick={() => handleDeleteWorkLog(log.id)}
+                    className="p-2 rounded-lg transition-colors justify-self-end"
+                    style={{ color: 'var(--text-muted)' }}
+                    onMouseEnter={e => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.color = 'var(--danger)';
+                      el.style.background = 'var(--danger-bg)';
+                    }}
+                    onMouseLeave={e => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.color = 'var(--text-muted)';
+                      el.style.background = '';
+                    }}
+                    title="Eliminar registro"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                ) : <span />}
+              </div>
+            ))}
           </div>
         )}
       </div>
