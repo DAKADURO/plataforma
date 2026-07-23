@@ -16,6 +16,7 @@ model User {
   logs      AuditLog[]
   assignedProjects Project[] @relation("ProjectTeam")
   movements Inventory[]  // Movements this user made
+  createdTags Tag[]      // Tags this user created
 }
 
 model AuditLog {
@@ -157,6 +158,7 @@ model Product {
   inventory        Inventory[]
   machineMaterials MachineMaterial[]
   alerts ReorderAlert[]
+  tags ProductTag[]
 
   @@index([category])
   @@index([department])
@@ -308,4 +310,32 @@ model ReorderAlert {
 
   @@index([productId])
   @@index([status])
+}
+
+// =======================
+// Almacén: Etiquetas (Tags) de Productos
+// =======================
+model Tag {
+  id String @id @default(uuid())
+  name String @unique
+  description String?
+  color String?           // For badge styling (hex or CSS color)
+  createdBy String
+  createdByUser User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  products ProductTag[]
+  createdAt DateTime @default(now())
+
+  @@index([createdBy])
+}
+
+model ProductTag {
+  id String @id @default(uuid())
+  productId String
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tagId String
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, tagId])
+  @@index([productId])
+  @@index([tagId])
 }
