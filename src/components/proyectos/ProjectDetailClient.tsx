@@ -4,7 +4,7 @@
 import React, { useState, useTransition } from 'react';
 import { updateProjectStatus, updateProjectBudget } from '@/app/actions/projects';
 import { addProjectNote } from '@/app/actions/projects';
-import { createTask, updateTask, deleteTask } from '@/app/actions/tasks';
+import { createTask, updateTask, deleteTask, addTaskMaterial, removeTaskMaterial } from '@/app/actions/tasks';
 import { addWorkLog, deleteWorkLog } from '@/app/actions/worklogs';
 import { updateProjectContractAmount } from '@/app/actions/projects';
 import { addPayment, markPaymentPaid, markPaymentPending, deletePayment } from '@/app/actions/payments';
@@ -43,6 +43,13 @@ type InventoryItem = {
   product: { name: string; cost: number };
 };
 
+type TaskMaterial = {
+  id: string;
+  quantity: number;
+  consumed: boolean;
+  product: { id: string; name: string; sku: string };
+};
+
 type ProjectTask = {
   id: string;
   name: string;
@@ -50,7 +57,10 @@ type ProjectTask = {
   endDate: Date | null;
   progress: number;
   status: string;
+  materials: TaskMaterial[];
 };
+
+type Product = { id: string; name: string; sku: string; stock: number };
 
 type ProjectDepartment = {
   id: string;
@@ -144,6 +154,7 @@ function TaskRow({
   projectId,
   departmentId,
   role,
+  products,
   onOptimisticUpdate,
   onOptimisticDelete,
 }: {
@@ -151,14 +162,57 @@ function TaskRow({
   projectId: string;
   departmentId: string;
   role: string;
+  products: Product[];
   onOptimisticUpdate: (id: string, patch: Partial<ProjectTask>) => void;
   onOptimisticDelete: (id: string) => void;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [showMaterials, setShowMaterials] = useState(false);
+  const [materials, setMaterials] = useState<TaskMaterial[]>(task.materials || []);
+  const [newMaterialProductId, setNewMaterialProductId] = useState('');
+  const [newMaterialQty, setNewMaterialQty] = useState('');
+  const [materialError, setMaterialError] = useState('');
+  const [savingMaterial, startSavingMaterial] = useTransition();
+
+  const handleAddMaterial = () => {
+    const quantity = Number(newMaterialQty);
+    if (!newMaterialProductId || !Number.isFinite(quantity) || quantity <= 0) {
+      setMaterialError('Selecciona un producto y una cantidad válida.');
+      return;
+    }
+    setMaterialError('');
+    startSavingMaterial(async () => {
+      const result = await addTaskMaterial({ taskId: task.id, productId: newMaterialProductId, quantity, projectId });
+      if (result.success && result.material) {
+        setMaterials(prev => [...prev, result.material as TaskMaterial]);
+        setNewMaterialProductId('');
+        setNewMaterialQty('');
+      } else {
+        setMaterialError(result.error || 'No se pudo vincular el material.');
+      }
+    });
+  };
+
+  const handleRemoveMaterial = (materialId: string) => {
+    startSavingMaterial(async () => {
+      const result = await removeTaskMaterial(materialId, projectId);
+      if (result.success) {
+        setMaterials(prev => prev.filter(m => m.id !== materialId));
+      } else {
+        setMaterialError(result.error || 'No se pudo quitar el material.');
+      }
+    });
+  };
 
   const handleProgressChange = (val: number) => {
     const newStatus = val === 100 ? 'COMPLETADA' : val > 0 ? 'EN_PROGRESO' : 'PENDIENTE';
     onOptimisticUpdate(task.id, { progress: val, status: newStatus });
+    // Al llegar a 100% el servidor descuenta los materiales automáticamente del almacén;
+    // reflejamos ese resultado de inmediato para no mostrar el botón de "quitar" en un
+    // material que ya se consumió.
+    if (val === 100) {
+      setMaterials(prev => prev.map(m => ({ ...m, consumed: true })));
+    }
     startTransition(async () => {
       await updateTask({ id: task.id, projectId, projectDepartmentId: departmentId, progress: val, status: newStatus });
     });
@@ -201,8 +255,11 @@ function TaskRow({
 
   return (
     <div
-      className={`grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 items-center p-4 rounded-2xl border transition-all duration-300 ${isPending ? 'opacity-60' : ''}`}
-      style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+      className="rounded-2xl border transition-all duration-300"
+      style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)', opacity: isPending ? 0.6 : 1 }}
+    >
+    <div
+      className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto_auto] gap-4 items-center p-4"
     >
       {/* Task Name + Status */}
       <div className="flex items-center gap-4 min-w-0">
@@ -262,6 +319,20 @@ function TaskRow({
         />
       </div>
 
+      {/* Materiales */}
+      <button
+        onClick={() => setShowMaterials(v => !v)}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
+        style={materials.length > 0
+          ? { background: 'var(--accent-subtle)', color: 'var(--accent)' }
+          : { background: 'var(--bg-surface-alt)', color: 'var(--text-muted)' }
+        }
+        title="Materiales de esta tarea"
+      >
+        <Package className="w-3.5 h-3.5" />
+        {materials.length > 0 ? materials.length : ''}
+      </button>
+
       {/* Delete */}
       {!isReadOnly && (
         <button
@@ -285,11 +356,89 @@ function TaskRow({
         </button>
       )}
     </div>
+
+    {showMaterials && (
+      <div className="px-4 pb-4 space-y-3 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
+        {!isReadOnly && (
+          <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto] gap-2">
+            <select
+              value={newMaterialProductId}
+              onChange={e => setNewMaterialProductId(e.target.value)}
+              className="rounded-lg px-3 py-2 text-xs outline-none"
+              style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+            >
+              <option value="">Selecciona un producto...</option>
+              {products.map(p => (
+                <option key={p.id} value={p.id}>{p.name} (SKU: {p.sku}, stock: {p.stock})</option>
+              ))}
+            </select>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              placeholder="Cantidad"
+              value={newMaterialQty}
+              onChange={e => setNewMaterialQty(e.target.value)}
+              className="rounded-lg px-3 py-2 text-xs outline-none"
+              style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+            />
+            <button
+              onClick={handleAddMaterial}
+              disabled={!newMaterialProductId || !newMaterialQty || savingMaterial}
+              className="px-3 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-40"
+              style={{ background: 'var(--accent)' }}
+            >
+              Vincular
+            </button>
+          </div>
+        )}
+        {materialError && <p className="text-[10px] font-bold" style={{ color: 'var(--danger)' }}>{materialError}</p>}
+        {materials.length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Sin materiales vinculados a esta tarea.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {materials.map(m => (
+              <div
+                key={m.id}
+                className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg"
+                style={{ background: 'var(--bg-surface-alt)' }}
+              >
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  {m.product.name} <span style={{ color: 'var(--text-muted)' }}>· SKU {m.product.sku} · Cant: {m.quantity}</span>
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {m.consumed && (
+                    <span className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+                      Descontado
+                    </span>
+                  )}
+                  {!isReadOnly && !m.consumed && (
+                    <button
+                      onClick={() => handleRemoveMaterial(m.id)}
+                      disabled={savingMaterial}
+                      className="p-1 rounded transition-colors disabled:opacity-40"
+                      style={{ color: 'var(--text-muted)' }}
+                      title="Quitar material"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+          Al llegar la tarea a 100% de progreso, estos materiales se descuentan automáticamente del almacén.
+        </p>
+      </div>
+    )}
+    </div>
   );
 }
 
 // ---- Main Component ----
-export default function ProjectDetailClient({ project, role }: { project: Project; role: string }) {
+export default function ProjectDetailClient({ project, role, products = [] }: { project: Project; role: string; products?: Product[] }) {
   const [status, setStatus] = useState(project.status);
   const [blockReason, setBlockReason] = useState(project.blockReason || '');
   const [saving, setSaving] = useState(false);
@@ -387,6 +536,7 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
       endDate: newTaskEnd ? new Date(newTaskEnd) : null,
       progress: 0,
       status: 'PENDIENTE',
+      materials: [],
     };
     setDepartments(prev => prev.map(d => d.id === activeDeptId ? { ...d, tasks: [...d.tasks, optimisticTask] } : d));
     const name = newTaskName.trim();
@@ -401,7 +551,7 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
       if (result.success && result.task) {
         setDepartments(prev =>
           prev.map(d => d.id === activeDeptId
-            ? { ...d, tasks: d.tasks.map(t => t.id === optimisticTask.id ? result.task as ProjectTask : t) }
+            ? { ...d, tasks: d.tasks.map(t => t.id === optimisticTask.id ? { ...result.task, materials: [] } as ProjectTask : t) }
             : d,
           ),
         );
@@ -1227,6 +1377,7 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
                     projectId={project.id}
                     departmentId={activeDeptId}
                     role={role}
+                    products={products}
                     onOptimisticUpdate={handleOptimisticUpdate}
                     onOptimisticDelete={handleOptimisticDelete}
                   />

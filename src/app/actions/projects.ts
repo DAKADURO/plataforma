@@ -48,6 +48,11 @@ export async function getProjectById(id: string) {
       departments: {
         include: {
           tasks: {
+            include: {
+              materials: {
+                include: { product: { select: { id: true, name: true, sku: true } } }
+              }
+            },
             orderBy: { createdAt: 'asc' }
           }
         },

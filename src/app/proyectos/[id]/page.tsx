@@ -1,12 +1,16 @@
 import { getProjectById } from '@/app/actions/projects'
+import { getProducts } from '@/app/actions/almacen'
 import { notFound } from 'next/navigation'
 import ProjectDetailClient from '@/components/proyectos/ProjectDetailClient'
 import { getCurrentUserRole } from '@/lib/auth'
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
-  const project = await getProjectById(resolvedParams.id);
-  const role = await getCurrentUserRole();
+  const [project, role, products] = await Promise.all([
+    getProjectById(resolvedParams.id),
+    getCurrentUserRole(),
+    getProducts('Todas', 'Todos')
+  ]);
 
   if (!project) {
     notFound();
@@ -23,7 +27,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="w-full">
       <div className="w-full max-w-[1400px] mx-auto space-y-8 px-4 md:px-6">
-        <ProjectDetailClient project={sanitizedProject} role={resolvedRole} />
+        <ProjectDetailClient project={sanitizedProject} role={resolvedRole} products={products} />
       </div>
     </div>
   )

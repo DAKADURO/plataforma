@@ -22,6 +22,13 @@ export const createProjectTaskSchema = z.object({
   projectId: z.string().uuid(),
 });
 
+// Task Material Schema (BOM por tarea)
+export const createTaskMaterialSchema = z.object({
+  taskId: z.string().uuid("ID de tarea inválido"),
+  productId: z.string().uuid("ID de producto inválido"),
+  quantity: z.number().int().positive("La cantidad debe ser un entero mayor a cero"),
+});
+
 // Inventory Schema
 export const createProductSchema = z.object({
   sku: z.string().min(2).max(50),

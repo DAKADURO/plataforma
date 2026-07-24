@@ -138,9 +138,25 @@ model ProjectTask {
   progress            Int               @default(0) // 0-100
   status              String            @default("PENDIENTE") // PENDIENTE, EN_PROGRESO, COMPLETADA
   createdAt           DateTime          @default(now())
+  materials           TaskMaterial[]
 
   @@index([projectDepartmentId])
   @@index([status])
+}
+
+// Lista de materiales (BOM) por tarea: se descuenta del almacén automáticamente
+// cuando la tarea llega a 100%.
+model TaskMaterial {
+  id        String      @id @default(uuid())
+  taskId    String
+  task      ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity  Int
+  // Evita descuento doble si la tarea baja de 100% y vuelve a subir.
+  consumed  Boolean     @default(false)
+
+  @@index([taskId])
 }
 
 // =======================
@@ -204,6 +220,7 @@ model Product {
   isAlertEnabled Boolean @default(true)
   inventory        Inventory[]
   machineMaterials MachineMaterial[]
+  taskMaterials    TaskMaterial[]
   alerts ReorderAlert[]
   tags ProductTag[]
 
