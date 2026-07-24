@@ -13,6 +13,7 @@ export async function createTask(data: {
   name: string
   startDate?: Date | null
   endDate?: Date | null
+  dependsOnTaskId?: string | null
 }) {
   try {
     await requireRole(['ADMIN', 'GERENTE', 'TECNICO'])
@@ -29,6 +30,24 @@ export async function createTask(data: {
   }
 }
 
+async function wouldCauseCycle(taskId: string, predecessorId: string): Promise<boolean> {
+  let currId: string | null = predecessorId
+  const visited = new Set<string>()
+
+  while (currId) {
+    if (currId === taskId) return true
+    if (visited.has(currId)) break
+    visited.add(currId)
+
+    const parent: { dependsOnTaskId: string | null } | null = await prisma.projectTask.findUnique({
+      where: { id: currId },
+      select: { dependsOnTaskId: true },
+    })
+    currId = parent?.dependsOnTaskId || null
+  }
+  return false
+}
+
 export async function updateTask(data: {
   id: string
   projectId: string
@@ -38,10 +57,45 @@ export async function updateTask(data: {
   endDate?: Date | null
   progress?: number
   status?: string
+  dependsOnTaskId?: string | null
 }) {
   try {
     await requireRole(['ADMIN', 'GERENTE', 'TECNICO'])
     const { id, projectId, projectDepartmentId, ...rest } = data
+
+    if (rest.dependsOnTaskId) {
+      if (rest.dependsOnTaskId === id) {
+        return { success: false, error: 'Una tarea no puede depender de sí misma.' }
+      }
+      const isCycle = await wouldCauseCycle(id, rest.dependsOnTaskId)
+      if (isCycle) {
+        return { success: false, error: 'No se puede asignar dependencia: crearía un ciclo circular.' }
+      }
+    }
+
+    const existingTask = await prisma.projectTask.findUnique({
+      where: { id },
+      select: { dependsOnTaskId: true, progress: true }
+    })
+
+    const effectivePredecessorId = rest.dependsOnTaskId !== undefined ? rest.dependsOnTaskId : existingTask?.dependsOnTaskId
+
+    if (effectivePredecessorId) {
+      const predecessor = await prisma.projectTask.findUnique({
+        where: { id: effectivePredecessorId },
+        select: { name: true, progress: true }
+      })
+
+      const targetProgress = rest.progress !== undefined ? rest.progress : (existingTask?.progress || 0)
+
+      if (targetProgress > 0 && predecessor && predecessor.progress < 100) {
+        return {
+          success: false,
+          error: `No se puede iniciar: depende de "${predecessor.name}" que aún no está completada.`
+        }
+      }
+    }
+
     await prisma.projectTask.update({ where: { id }, data: rest })
 
     if (rest.progress === 100) {

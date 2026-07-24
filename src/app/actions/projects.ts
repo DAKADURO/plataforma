@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { requireRole } from '@/lib/auth'
 import { createClientSchema, createProjectSchema, updateProjectContractAmountSchema } from '@/lib/validations'
+import { logAudit } from '@/lib/audit'
 import { z } from 'zod'
 
 // [SEC-FIX #1] Proteger lecturas: usuarios con rol PENDIENTE no tienen acceso a datos
@@ -29,7 +30,7 @@ export async function getProjects() {
 export async function getProjectById(id: string) {
   // [SEC-FIX #1] Solo roles activos pueden leer el detalle de un proyecto
   await requireRole(ACTIVE_ROLES)
-  return await prisma.project.findUnique({
+  const project = await prisma.project.findUnique({
     where: { id },
     include: {
       client: true,
@@ -51,7 +52,8 @@ export async function getProjectById(id: string) {
             include: {
               materials: {
                 include: { product: { select: { id: true, name: true, sku: true } } }
-              }
+              },
+              dependsOnTask: { select: { id: true, name: true, progress: true } }
             },
             orderBy: { createdAt: 'asc' }
           }
@@ -71,9 +73,22 @@ export async function getProjectById(id: string) {
       },
       payments: {
         orderBy: { createdAt: 'desc' }
+      },
+      statusEvents: {
+        orderBy: { createdAt: 'desc' }
       }
     }
   })
+
+  if (!project) return null
+
+  const auditLogs = await prisma.auditLog.findMany({
+    where: { entity: 'Project', entityId: id },
+    include: { user: { select: { email: true } } },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  return { ...project, auditLogs }
 }
 
 export async function getClients() {
@@ -108,7 +123,7 @@ export async function createProject(data: z.infer<typeof createProjectSchema>) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
     const validData = createProjectSchema.parse(data)
-    await prisma.project.create({ 
+    const newProj = await prisma.project.create({ 
       data: {
         ...validData,
         departments: {
@@ -120,6 +135,12 @@ export async function createProject(data: z.infer<typeof createProjectSchema>) {
           ]
         }
       } 
+    })
+    await logAudit({
+      action: 'CREATE_PROJECT',
+      entity: 'Project',
+      entityId: newProj.id,
+      details: JSON.stringify({ name: newProj.name })
     })
     revalidatePath('/proyectos')
     return { success: true }
@@ -138,22 +159,52 @@ export async function createProject(data: z.infer<typeof createProjectSchema>) {
 export async function updateProjectStatus(data: { 
   id: string, 
   status: string, 
+  category?: string | null,
   blockReason?: string | null,
+  reason?: string | null,
 }) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
+    const { createSupabaseServerClient } = await import('@/lib/supabase-server')
+    const supabase = await createSupabaseServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const dbUser = user?.email ? await prisma.user.findUnique({ where: { email: user.email }, select: { id: true } }) : null
+
+    const effectiveBlockReason = data.status === 'ATORADO' || data.status === 'RIESGO'
+      ? (data.reason || data.blockReason || data.category || null)
+      : null
+
     await prisma.project.update({
       where: { id: data.id },
       data: {
         status: data.status,
-        blockReason: data.status === 'ATORADO' ? data.blockReason : null,
+        blockReason: effectiveBlockReason,
       }
     })
+
+    await prisma.projectStatusEvent.create({
+      data: {
+        projectId: data.id,
+        status: data.status,
+        category: data.category || null,
+        reason: data.reason || data.blockReason || null,
+        userId: dbUser?.id || null,
+      }
+    })
+
+    await logAudit({
+      userId: dbUser?.id,
+      action: 'STATUS_CHANGE',
+      entity: 'Project',
+      entityId: data.id,
+      details: JSON.stringify({ status: data.status, category: data.category, reason: data.reason || data.blockReason })
+    })
+
     revalidatePath('/proyectos')
     revalidatePath(`/proyectos/${data.id}`)
+    revalidatePath('/analiticas')
     return { success: true }
   } catch (error) {
-    // [SEC-FIX #5] Sanitizar errores internos de Prisma/BD
     if (error instanceof Error && error.message.includes('permisos')) {
       return { success: false, error: error.message }
     }
@@ -184,6 +235,12 @@ export async function updateProjectBudget(id: string, budget: number) {
       where: { id },
       data: { budget }
     })
+    await logAudit({
+      action: 'UPDATE_BUDGET',
+      entity: 'Project',
+      entityId: id,
+      details: JSON.stringify({ budget })
+    })
     revalidatePath(`/proyectos/${id}`)
     return { success: true }
   } catch (error) {
@@ -198,6 +255,12 @@ export async function updateProjectContractAmount(projectId: string, contractAmo
     await prisma.project.update({
       where: { id: valid.projectId },
       data: { contractAmount: valid.contractAmount }
+    })
+    await logAudit({
+      action: 'UPDATE_CONTRACT_AMOUNT',
+      entity: 'Project',
+      entityId: projectId,
+      details: JSON.stringify({ contractAmount: valid.contractAmount })
     })
     revalidatePath(`/proyectos/${projectId}`)
     revalidatePath('/analiticas')
@@ -222,6 +285,12 @@ export async function assignTeamMember(projectId: string, userId: string) {
         team: { connect: { id: userId } }
       }
     })
+    await logAudit({
+      action: 'ASSIGN_TEAM',
+      entity: 'Project',
+      entityId: projectId,
+      details: JSON.stringify({ userId })
+    })
     revalidatePath(`/proyectos/${projectId}`)
     return { success: true }
   } catch (error) {
@@ -238,6 +307,12 @@ export async function removeTeamMember(projectId: string, userId: string) {
         team: { disconnect: { id: userId } }
       }
     })
+    await logAudit({
+      action: 'REMOVE_TEAM',
+      entity: 'Project',
+      entityId: projectId,
+      details: JSON.stringify({ userId })
+    })
     revalidatePath(`/proyectos/${projectId}`)
     return { success: true }
   } catch (error) {
@@ -247,3 +322,4 @@ export async function removeTeamMember(projectId: string, userId: string) {
     return { success: false, error: 'No se pudo remover el miembro.' }
   }
 }
+

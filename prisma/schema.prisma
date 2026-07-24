@@ -27,8 +27,11 @@ model AuditLog {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   action    String   // EJ: "CREATE_VERSION", "UPDATE_INVENTORY"
   entity    String   // EJ: "Document", "Inventory"
+  entityId  String?  // ID de la entidad relacionada (e.g. projectId)
   details   String?  // JSON con cambios
   createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
 }
 
 // =======================
@@ -64,6 +67,7 @@ model Project {
   workLogs    WorkLog[]
   machineAssignments MachineAssignment[]
   payments    ProjectPayment[]
+  statusEvents ProjectStatusEvent[]
 
   @@index([clientId])
   @@index([status])
@@ -138,10 +142,30 @@ model ProjectTask {
   progress            Int               @default(0) // 0-100
   status              String            @default("PENDIENTE") // PENDIENTE, EN_PROGRESO, COMPLETADA
   createdAt           DateTime          @default(now())
+  dependsOnTaskId     String?
+  dependsOnTask       ProjectTask?      @relation("TaskDependency", fields: [dependsOnTaskId], references: [id], onDelete: SetNull)
+  dependentTasks      ProjectTask[]     @relation("TaskDependency")
   materials           TaskMaterial[]
 
   @@index([projectDepartmentId])
   @@index([status])
+  @@index([dependsOnTaskId])
+}
+
+// =======================
+// FASE 7: Bitácora de Riesgos y Cambios de Estado
+// =======================
+model ProjectStatusEvent {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status    String   // NORMAL, RIESGO, ATORADO
+  category  String?  // "Falta de suministro", "Fallo de diseño", "Cliente retrasó anticipo", "Otro"
+  reason    String?  // texto libre adicional
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
 }
 
 // Lista de materiales (BOM) por tarea: se descuenta del almacén automáticamente

@@ -20,6 +20,7 @@ export const createProjectSchema = z.object({
 export const createProjectTaskSchema = z.object({
   name: z.string().min(2, "La tarea debe tener al menos 2 caracteres").max(150),
   projectId: z.string().uuid(),
+  dependsOnTaskId: z.string().uuid().optional().nullable(),
 });
 
 // Task Material Schema (BOM por tarea)

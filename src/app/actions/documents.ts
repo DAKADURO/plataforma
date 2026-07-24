@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { requireRole } from '@/lib/auth'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { logAudit } from '@/lib/audit'
 
 export async function addDocumentVersion(data: {
   projectId: string;
@@ -37,6 +38,7 @@ export async function addDocumentVersion(data: {
       }
     })
 
+    let versionNum = 1
     if (!document) {
       document = await prisma.document.create({
         data: {
@@ -57,16 +59,24 @@ export async function addDocumentVersion(data: {
       })
     } else {
       const lastVersion = document.versions.reduce((max: number, v: { version: number }) => v.version > max ? v.version : max, 0)
+      versionNum = lastVersion + 1
       await prisma.documentVersion.create({
         data: {
           documentId: document.id,
-          version: lastVersion + 1,
+          version: versionNum,
           url: data.url,
           notes: data.notes,
           uploadedBy // identidad resuelta en servidor
         }
       })
     }
+
+    await logAudit({
+      action: 'UPLOAD_DOCUMENT',
+      entity: 'Project',
+      entityId: data.projectId,
+      details: JSON.stringify({ documentName: data.name, version: versionNum })
+    })
 
     revalidatePath(`/proyectos/${data.projectId}`)
     return { success: true }
@@ -78,3 +88,4 @@ export async function addDocumentVersion(data: {
     return { success: false, error: 'No se pudo completar la operación. Intente de nuevo.' }
   }
 }
+

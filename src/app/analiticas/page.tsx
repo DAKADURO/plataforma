@@ -6,6 +6,7 @@ import { getAccountsReceivable, getProjectsMarginSummary } from '@/app/actions/p
 import DashboardCharts from '@/components/analiticas/DashboardCharts';
 import AccountsReceivablePanel from '@/components/analiticas/AccountsReceivablePanel';
 import MarginPanel from '@/components/analiticas/MarginPanel';
+import RiskCausesPanel from '@/components/analiticas/RiskCausesPanel';
 import { requireRole } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
@@ -20,12 +21,18 @@ export default async function AnaliticasPage() {
 
   // Fetching live data since analytics should be fresh, and unstable_cache 
   // conflicts with the new role-based security (cookies cannot be read inside unstable_cache)
-  const [projects, products, clients, receivable, marginSummary] = await Promise.all([
+  const [projects, products, clients, receivable, marginSummary, riskEvents] = await Promise.all([
     getProjects(),
     getProducts(),
     getClients(),
     getAccountsReceivable(),
     getProjectsMarginSummary(),
+    prisma.projectStatusEvent.groupBy({
+      by: ['category'],
+      where: { category: { not: null } },
+      _count: { category: true },
+      orderBy: { _count: { category: 'desc' } },
+    }),
   ]);
 
   // Enrich projects with their document count
@@ -53,9 +60,12 @@ export default async function AnaliticasPage() {
 
       <DashboardCharts projects={enrichedProjects} products={products} clientCount={clients.length} />
 
+      <RiskCausesPanel riskEvents={riskEvents as any} />
+
       <AccountsReceivablePanel summary={receivable.success ? receivable.summary : null} />
 
       <MarginPanel summary={marginSummary.success ? marginSummary.summary : null} />
     </div>
   );
 }
+
