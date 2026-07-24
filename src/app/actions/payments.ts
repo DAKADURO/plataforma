@@ -117,3 +117,47 @@ export async function getAccountsReceivable() {
     return { success: false, error: 'No se pudo obtener cuentas por cobrar.', summary: null }
   }
 }
+
+function daysBetweenUTC(start: Date, end: Date): number {
+  const sUTC = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())
+  const eUTC = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate())
+  return Math.max(1, Math.round((eUTC - sUTC) / (1000 * 60 * 60 * 24)) + 1)
+}
+
+// Margen bruto por proyecto y promedio de la empresa (Analíticas). Solo considera
+// proyectos con monto contratado > 0 (sin eso el margen no tiene sentido).
+export async function getProjectsMarginSummary() {
+  try {
+    await requireRole(FINANCE_ROLES)
+
+    const projects = await prisma.project.findMany({
+      where: { contractAmount: { gt: 0 } },
+      select: {
+        id: true,
+        name: true,
+        contractAmount: true,
+        inventory: { select: { quantity: true, product: { select: { cost: true } } } },
+        workLogs: { select: { hours: true, hourlyCostSnapshot: true } },
+        machineAssignments: { select: { startDate: true, endDate: true, dailyRateSnapshot: true } }
+      }
+    })
+
+    const results = projects.map(p => {
+      const materialCost = p.inventory.reduce((sum, i) => sum + i.quantity * (i.product?.cost || 0), 0)
+      const laborCost = p.workLogs.reduce((sum, w) => sum + w.hours * w.hourlyCostSnapshot, 0)
+      const machineCost = p.machineAssignments.reduce(
+        (sum, a) => sum + daysBetweenUTC(a.startDate, a.endDate || new Date()) * a.dailyRateSnapshot, 0
+      )
+      const totalCost = materialCost + laborCost + machineCost
+      const margin = ((p.contractAmount - totalCost) / p.contractAmount) * 100
+      return { id: p.id, name: p.name, contractAmount: p.contractAmount, totalCost, margin }
+    })
+
+    const avgMargin = results.length > 0 ? results.reduce((sum, r) => sum + r.margin, 0) / results.length : null
+    const lowMargin = results.filter(r => r.margin < 20).sort((a, b) => a.margin - b.margin)
+
+    return { success: true, summary: { avgMargin, lowMargin, total: results.length } }
+  } catch (error) {
+    return { success: false, error: 'No se pudo calcular márgenes.', summary: null }
+  }
+}

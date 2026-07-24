@@ -13,6 +13,7 @@ import ThemeSwitcher from '@/components/ui/ThemeSwitcher';
 import { useState, useEffect } from 'react';
 
 type UserInfo = { email: string; role: string };
+type PaymentAlert = { id: string; concept: string; amount: number; dueDate: Date | null; projectId: string; projectName: string };
 
 const ROLE_BADGES: Record<string, { label: string; bg: string; color: string }> = {
   ADMIN:   { label: 'Admin',   bg: 'var(--accent-subtle)',        color: 'var(--accent)' },
@@ -34,7 +35,7 @@ const NAV_LINKS = [
 const SIDEBAR_EXPANDED = 224;
 const SIDEBAR_COLLAPSED = 64;
 
-export default function AppShell({ children, user }: { children: React.ReactNode; user: UserInfo }) {
+export default function AppShell({ children, user, paymentAlerts = [] }: { children: React.ReactNode; user: UserInfo; paymentAlerts?: PaymentAlert[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const role = ROLE_BADGES[user.role] ?? ROLE_BADGES['TECNICO'];
@@ -239,7 +240,7 @@ export default function AppShell({ children, user }: { children: React.ReactNode
           {/* Right actions */}
           <div className="flex items-center gap-2">
             <GlobalSearch />
-            <Notifications />
+            <Notifications paymentAlerts={paymentAlerts} />
             <div className="w-px h-5 mx-1 hidden sm:block" style={{ background: 'var(--border)' }} />
             <ThemeSwitcher />
           </div>

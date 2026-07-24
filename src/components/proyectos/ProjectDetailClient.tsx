@@ -331,6 +331,11 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
   const totalPendingCollection = payments.filter(p => p.status === 'PENDIENTE').reduce((sum, p) => sum + p.amount, 0);
   const uncontractedBalance = contractAmount - (totalPaid + totalPendingCollection);
 
+  // Margen bruto: solo tiene sentido si hay un monto contratado; con costos de mano de
+  // obra ocultos para TECNICO, el margen mostrado a ese rol sería engañoso, así que
+  // también se restringe a canSeeMoney (definida arriba).
+  const grossMargin = contractAmount > 0 ? ((contractAmount - totalCost) / contractAmount) * 100 : null;
+
   const [departments, setDepartments] = useState<ProjectDepartment[]>(project.departments || []);
   const [activeDeptId, setActiveDeptId] = useState<string>(project.departments?.[0]?.id || '');
 
@@ -944,6 +949,32 @@ export default function ProjectDetailClient({ project, role }: { project: Projec
               <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>Sin Facturar</span>
               <div className="text-2xl font-black" style={{ color: 'var(--text-secondary)' }}>${Math.max(0, uncontractedBalance).toLocaleString()}</div>
             </div>
+
+            {grossMargin !== null && (
+              <div
+                className="p-4 rounded-xl border"
+                style={
+                  grossMargin < 5
+                    ? { background: 'var(--danger-bg)', borderColor: 'var(--danger)' }
+                    : grossMargin < 20
+                      ? { background: 'var(--warning-bg)', borderColor: 'var(--warning)' }
+                      : { background: 'var(--success-bg)', borderColor: 'var(--success)' }
+                }
+              >
+                <span
+                  className="text-[10px] font-bold uppercase tracking-widest block mb-1"
+                  style={{ color: grossMargin < 5 ? 'var(--danger)' : grossMargin < 20 ? 'var(--warning)' : 'var(--success)' }}
+                >
+                  Margen Bruto
+                </span>
+                <div
+                  className="text-2xl font-black"
+                  style={{ color: grossMargin < 5 ? 'var(--danger)' : grossMargin < 20 ? 'var(--warning)' : 'var(--success)' }}
+                >
+                  {grossMargin.toFixed(1)}%
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Add Payment Row */}

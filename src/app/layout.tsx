@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { prisma } from "@/lib/prisma";
 import AppShell from "@/components/layout/AppShell";
 import { headers } from "next/headers";
+import { getAccountsReceivable } from "@/app/actions/payments";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -35,6 +36,7 @@ export default async function RootLayout({
   const isBareRoute = BARE_ROUTES.some(route => pathname.startsWith(route));
 
   let userInfo: { email: string; role: string } | null = null;
+  let paymentAlerts: { id: string; concept: string; amount: number; dueDate: Date | null; projectId: string; projectName: string }[] = [];
 
   if (!isBareRoute) {
     try {
@@ -49,6 +51,26 @@ export default async function RootLayout({
           create: { email: user.email!, role: 'TECNICO' },
         });
         userInfo = { email: user.email!, role: dbUser.role };
+
+        // Alertas de cobro (vencido o vence en 7 días): solo para roles financieros,
+        // para no pagar esta consulta en cada carga de página de un TECNICO.
+        if (dbUser.role === 'ADMIN' || dbUser.role === 'GERENTE') {
+          const receivable = await getAccountsReceivable();
+          if (receivable.success && receivable.summary) {
+            const soon = new Date();
+            soon.setDate(soon.getDate() + 7);
+            paymentAlerts = receivable.summary.pending
+              .filter(p => p.dueDate && new Date(p.dueDate) <= soon)
+              .map(p => ({
+                id: p.id,
+                concept: p.concept,
+                amount: p.amount,
+                dueDate: p.dueDate,
+                projectId: p.project.id,
+                projectName: p.project.name
+              }));
+          }
+        }
       }
     } catch {
       // If Prisma fails (e.g. on login page load), just skip
@@ -71,7 +93,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         {userInfo && !isBareRoute ? (
-          <AppShell user={userInfo}>
+          <AppShell user={userInfo} paymentAlerts={paymentAlerts}>
             {children}
           </AppShell>
         ) : (

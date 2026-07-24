@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Bell, AlertTriangle } from 'lucide-react';
+import { Bell, AlertTriangle, Receipt } from 'lucide-react';
+import Link from 'next/link';
 
 type Notification = {
   id: string;
@@ -12,10 +13,12 @@ type Notification = {
   time: Date;
 };
 
-export default function Notifications() {
+type PaymentAlert = { id: string; concept: string; amount: number; dueDate: Date | null; projectId: string; projectName: string };
+
+export default function Notifications({ paymentAlerts = [] }: { paymentAlerts?: PaymentAlert[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unread, setUnread] = useState(0);
+  const [unread, setUnread] = useState(paymentAlerts.length);
 
   useEffect(() => {
     const channel = supabase
@@ -80,7 +83,44 @@ export default function Notifications() {
             </div>
 
             <div className="max-h-80 overflow-y-auto">
-              {notifications.length === 0 ? (
+              {paymentAlerts.map(p => {
+                const isOverdue = p.dueDate && new Date(p.dueDate) < new Date();
+                return (
+                  <Link
+                    key={p.id}
+                    href={`/proyectos/${p.projectId}`}
+                    className="block p-4 border-b transition-colors"
+                    style={{ borderColor: 'var(--border)' }}
+                  >
+                    <div className="flex gap-3">
+                      <div
+                        className="mt-0.5 w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                        style={isOverdue
+                          ? { background: 'var(--danger-bg)', color: 'var(--danger)' }
+                          : { background: 'var(--warning-bg)', color: 'var(--warning)' }
+                        }
+                      >
+                        <Receipt className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                          {isOverdue ? 'Cobro vencido' : 'Cobro próximo a vencer'}
+                        </p>
+                        <p className="text-xs mt-0.5 leading-snug" style={{ color: 'var(--text-secondary)' }}>
+                          <span className="font-semibold">{p.projectName}</span> · {p.concept} · ${p.amount.toLocaleString()}
+                        </p>
+                        {p.dueDate && (
+                          <p className="text-[10px] mt-2 font-medium" style={{ color: 'var(--text-muted)' }}>
+                            Vence: {new Date(p.dueDate).toLocaleDateString('es-MX', { timeZone: 'UTC' })}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+
+              {notifications.length === 0 && paymentAlerts.length === 0 ? (
                 <div className="p-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
                   No hay notificaciones recientes.
                 </div>
