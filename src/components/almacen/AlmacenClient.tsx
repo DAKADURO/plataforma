@@ -47,6 +47,7 @@ export default function AlmacenClient({
   currentDepartment,
   projects,
   role,
+  departmentsDB,
 }: {
   products: Product[];
   categories: string[];
