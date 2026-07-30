@@ -75,6 +75,7 @@ export default function ProposalManager({
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ clientId: '', title: '', description: '', amount: '', status: 'BORRADOR' });
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -112,6 +113,7 @@ export default function ProposalManager({
   const openCreate = () => {
     setForm({ clientId: clients[0]?.id ?? '', title: '', description: '', amount: '', status: 'BORRADOR' });
     setEditMode(false);
+    setEditingId(null);
     setFormError('');
     setModalOpen(true);
   };
@@ -119,6 +121,7 @@ export default function ProposalManager({
   const openEdit = (p: Proposal) => {
     setForm({ clientId: p.clientId, title: p.title, description: p.description ?? '', amount: String(p.amount), status: p.status });
     setEditMode(true);
+    setEditingId(p.id);
     setFormError('');
     setModalOpen(true);
   };
@@ -130,8 +133,8 @@ export default function ProposalManager({
     setFormError('');
     const data = { clientId: form.clientId, title: form.title, description: form.description || undefined, amount: parseFloat(form.amount) || 0, status: form.status };
     let res;
-    if (editMode && selected) {
-      res = await updateProposal(selected.id, data);
+    if (editMode && editingId) {
+      res = await updateProposal(editingId, data);
     } else {
       res = await createProposal(data);
     }
