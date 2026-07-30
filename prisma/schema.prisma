@@ -19,6 +19,7 @@ model User {
   movements Inventory[]  // Movements this user made
   createdTags Tag[]      // Tags this user created
   workLogs  WorkLog[]    // Horas trabajadas registradas
+  restockOrders RestockOrder[] // Órdenes de reposición creadas
 }
 
 model AuditLog {
@@ -264,6 +265,7 @@ model Product {
   taskMaterials    TaskMaterial[]
   alerts ReorderAlert[]
   tags ProductTag[]
+  restockItems RestockOrderItem[]
 
   @@index([category])
   @@index([department])
@@ -469,4 +471,36 @@ model ProductTag {
   @@unique([productId, tagId])
   @@index([productId])
   @@index([tagId])
+}
+
+// =======================
+// Almacén: Órdenes de Reposición (Compras internas)
+// =======================
+model RestockOrder {
+  id        String   @id @default(uuid())
+  status    String   @default("BORRADOR") // BORRADOR, EN_TRANSITO, RECIBIDA, CANCELADA
+  createdBy String
+  user      User     @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  supplier  String?  // Opcional, nombre del proveedor interno o externo
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  receivedAt DateTime?
+  items     RestockOrderItem[]
+
+  @@index([status])
+  @@index([createdBy])
+}
+
+model RestockOrderItem {
+  id             String       @id @default(uuid())
+  restockOrderId String
+  restockOrder   RestockOrder @relation(fields: [restockOrderId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity       Int          @default(1)
+  unitCost       Float        @default(0) // Costo unitario al momento de la orden
+  
+  @@unique([restockOrderId, productId])
+  @@index([productId])
 }

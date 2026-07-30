@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, ArrowDownToLine, ArrowUpFromLine, PackageSearch, ArrowLeft, FolderOpen, Trash2, Zap, Droplets, Wind, HardHat, Monitor } from 'lucide-react';
+import { Plus, Search, ArrowDownToLine, ArrowUpFromLine, PackageSearch, ArrowLeft, FolderOpen, Trash2, Zap, Droplets, Wind, HardHat, Monitor, Scan, Printer } from 'lucide-react';
 import { deleteProduct, getAlerts } from '@/app/actions/almacen';
 import { getTags } from '@/app/actions/tags';
 import ProductModal from './ProductModal';
@@ -17,6 +17,7 @@ import AdvancedFilterPanel from './AdvancedFilterPanel';
 import FilterChips from './FilterChips';
 import EnhancedSearchBar from './EnhancedSearchBar';
 import Button from '@/components/ui/Button';
+import QRScannerModal from './QRScannerModal';
 
 type Product = {
   id: string;
@@ -61,6 +62,7 @@ export default function AlmacenClient({
 }) {
   const router = useRouter();
   const [isProductModalOpen, setProductModalOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [movementState, setMovementState] = useState<{ isOpen: boolean; productId?: string; type?: 'ENTRADA' | 'SALIDA' }>({ isOpen: false });
   const [searchTerm, setSearchTerm] = useState('');
   const [alerts, setAlerts] = useState<any[]>([]);
@@ -115,6 +117,15 @@ export default function AlmacenClient({
     return matchesSearch && matchesTags && matchesCategory && matchesDepartment && matchesItemType && matchesStock;
   });
 
+  const handleScanSuccess = (sku: string) => {
+    const product = products.find(p => p.sku.toLowerCase() === sku.toLowerCase());
+    if (product) {
+      setMovementState({ isOpen: true, productId: product.id });
+    } else {
+      alert(`Producto con SKU "${sku}" no encontrado.`);
+    }
+  };
+
   /* ── Vista de departamentos ─────────────────────────────────── */
   if (!currentDepartment) {
     return (
@@ -132,15 +143,35 @@ export default function AlmacenClient({
             </p>
           </div>
           <div className="mt-4 md:mt-0 flex items-center gap-3">
-            <button
-              onClick={() => router.push('/almacen/reports')}
-              className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all border"
-              style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-            >
-              📊 Reportes
-            </button>
+              <button
+                onClick={() => router.push('/almacen/etiquetas')}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all border"
+                style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              >
+                <Printer className="w-4 h-4" /> Etiquetas
+              </button>
+              <button
+                onClick={() => router.push('/almacen/reports')}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all border hidden sm:flex"
+                style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              >
+                📊 Reportes
+              </button>
+            {role !== 'TECNICO' && (
+              <button
+                onClick={() => router.push('/almacen/reposiciones')}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all border"
+                style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              >
+                🛒 Reposiciones
+              </button>
+            )}
             {role !== 'TECNICO' && (
               <button
                 onClick={() => setProductModalOpen(true)}
@@ -242,6 +273,16 @@ export default function AlmacenClient({
             filters={advancedFilters}
             onFilterChange={setAdvancedFilters}
           />
+          <button
+            onClick={() => setScannerOpen(true)}
+            className="flex items-center justify-center p-3 rounded-lg text-sm font-semibold transition-all border"
+            style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+            title="Escanear QR"
+          >
+            <Scan className="w-5 h-5" />
+          </button>
         </div>
 
         <div className="flex items-center gap-2 w-full">
@@ -498,6 +539,7 @@ export default function AlmacenClient({
         initialType={movementState.type}
       />
       <TagManager isOpen={tagManagerOpen} onClose={() => setTagManagerOpen(false)} />
+      <QRScannerModal isOpen={scannerOpen} onClose={() => setScannerOpen(false)} onScanSuccess={handleScanSuccess} />
     </div>
   );
 }

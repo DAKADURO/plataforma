@@ -19,6 +19,23 @@ export const getCurrentUserRole = cache(async () => {
   }
 })
 
+export const getCurrentUser = cache(async () => {
+  try {
+    const supabase = await createSupabaseServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user || !user.email) return null
+
+    const dbUser = await prisma.user.findUnique({
+      where: { email: user.email }
+    })
+
+    return dbUser || null
+  } catch {
+    return null
+  }
+})
+
 export async function requireRole(allowedRoles: string[]) {
   const role = await getCurrentUserRole()
   if (!role || !allowedRoles.includes(role)) {
