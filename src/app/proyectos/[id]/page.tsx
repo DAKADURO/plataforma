@@ -9,7 +9,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const [project, role, products] = await Promise.all([
     getProjectById(resolvedParams.id),
     getCurrentUserRole(),
-    getProducts('Todas', 'Todos')
+    getProducts(undefined, undefined)
   ]);
 
   if (!project) {
