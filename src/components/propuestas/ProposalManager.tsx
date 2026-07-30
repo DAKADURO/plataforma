@@ -13,7 +13,7 @@ import {
 import {
   Plus, ArrowLeft, Trash2, UploadCloud, X, FolderOpen,
   Image, FileText, Package, Info, ArrowRight, Folders,
-  Globe, CheckCircle2, AlertTriangle,
+  Globe, CheckCircle2, AlertTriangle, ChevronDown,
 } from 'lucide-react';
 
 /* ─── Types ─────────────────────────────────── */
@@ -90,13 +90,12 @@ export default function ProposalManager({
   // Material form
   const [matForm, setMatForm] = useState({ name: '', category: 'General', quantity: '1', unitPrice: '0' });
   const [matSubmitting, setMatSubmitting] = useState(false);
+  const [showMatForm, setShowMatForm] = useState(false);
 
   const canEdit = userRole !== 'TECNICO';
 
   /* ── helpers ── */
-  const refresh = () => {
-    startTransition(() => router.refresh());
-  };
+  const refresh = () => { startTransition(() => router.refresh()); };
 
   const syncSelected = (updated: Proposal[]) => {
     setProposals(updated);
@@ -106,9 +105,7 @@ export default function ProposalManager({
     }
   };
 
-  useEffect(() => {
-    syncSelected(initialProposals);
-  }, [initialProposals]);
+  useEffect(() => { syncSelected(initialProposals); }, [initialProposals]);
 
   const openCreate = () => {
     setForm({ clientId: clients[0]?.id ?? '', title: '', description: '', amount: '', status: 'BORRADOR' });
@@ -193,7 +190,7 @@ export default function ProposalManager({
     }
   };
 
-  /* ── Material add ── */
+  /* ── Add material ── */
   const handleAddMaterial = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selected || !matForm.name) return;
@@ -206,6 +203,7 @@ export default function ProposalManager({
     });
     setMatForm({ name: '', category: 'General', quantity: '1', unitPrice: '0' });
     setMatSubmitting(false);
+    setShowMatForm(false);
     refresh();
   };
 
@@ -214,10 +212,7 @@ export default function ProposalManager({
     if (!selected) return;
     if (!confirm(`¿Convertir "${selected.title}" en proyecto?`)) return;
     const res = await convertToProject(selected.id);
-    if (res.success) {
-      setSelected(null);
-      router.push('/proyectos');
-    }
+    if (res.success) { setSelected(null); router.push('/proyectos'); }
   };
 
   /* ── Filtered list ── */
@@ -231,92 +226,102 @@ export default function ProposalManager({
     const totalMaterials = selected.materials.reduce((sum, m) => sum + m.quantity * m.unitPrice, 0);
 
     return (
-      <div className="space-y-6 animate-fade-in">
-        {/* Back + header */}
-        <div className="flex flex-wrap items-center gap-4">
+      <div className="space-y-4 animate-fade-in">
+        {/* Mobile-first header */}
+        <div className="flex items-center gap-3 py-2">
           <button
             onClick={() => setSelected(null)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors"
             style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
           >
             <ArrowLeft className="w-4 h-4" /> Volver
           </button>
           <div className="flex-1 min-w-0">
-            <h2 className="text-2xl font-extrabold truncate" style={{ color: 'var(--text-primary)' }}>{selected.title}</h2>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{selected.client.name}</p>
+            <h2 className="text-lg font-extrabold truncate" style={{ color: 'var(--text-primary)' }}>{selected.title}</h2>
+            <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{selected.client.name}</p>
           </div>
           <span
-            className="px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg border"
+            className="shrink-0 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border"
             style={{ background: s.bg, color: s.color, borderColor: s.border }}
           >
             {s.label}
           </span>
-          {canEdit && (
-            <button
-              onClick={() => openEdit(selected)}
-              className="px-4 py-2 text-sm font-semibold rounded-xl border transition-colors"
-              style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-            >
-              Editar
-            </button>
-          )}
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b overflow-x-auto" style={{ borderColor: 'var(--border)' }}>
+        {/* Action buttons row */}
+        {canEdit && (
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => openEdit(selected)}
+              className="flex-1 sm:flex-none px-4 py-2 text-sm font-semibold rounded-xl border transition-colors text-center"
+              style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+            >
+              ✏️ Editar
+            </button>
+            <button
+              onClick={() => handleDelete(selected.id)}
+              className="px-4 py-2 text-sm font-semibold rounded-xl border transition-colors"
+              style={{ background: 'var(--danger-bg)', borderColor: 'var(--danger)', color: 'var(--danger)' }}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Tabs - scrollable on mobile */}
+        <div className="flex border-b overflow-x-auto scrollbar-hide gap-0" style={{ borderColor: 'var(--border)' }}>
           {([
-            { id: 'info',      label: 'Información', icon: Info },
+            { id: 'info',      label: 'Info',       icon: Info },
             { id: 'photos',    label: `Fotos (${selected.photos.length})`, icon: Image },
-            { id: 'documents', label: `Documentos (${selected.documents.length})`, icon: FileText },
+            { id: 'documents', label: `Docs (${selected.documents.length})`, icon: FileText },
             { id: 'materials', label: `Materiales (${selected.materials.length})`, icon: Package },
           ] as const).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className="flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors"
+              className="flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors shrink-0"
               style={{
                 borderColor: activeTab === id ? 'var(--accent)' : 'transparent',
                 color: activeTab === id ? 'var(--accent)' : 'var(--text-muted)',
               }}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-3.5 h-3.5" />
               {label}
             </button>
           ))}
         </div>
 
-        <div className="rounded-2xl p-6 border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+        <div className="rounded-2xl p-4 sm:p-6 border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
 
           {/* ── Info tab ── */}
           {activeTab === 'info' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-5">
+              {/* Stats grid - 2 cols on mobile */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {[
                   { label: 'Cliente',   value: selected.client.name },
                   { label: 'Monto',     value: fmtCurrency(selected.amount) },
                   { label: 'Actualizado', value: new Date(selected.updatedAt).toLocaleDateString('es-MX') },
                 ].map(({ label, value }) => (
-                  <div key={label} className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
-                    <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{label}</p>
-                    <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{value}</p>
+                  <div key={label} className="p-3 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{label}</p>
+                    <p className="font-bold text-base truncate" style={{ color: 'var(--text-primary)' }}>{value}</p>
                   </div>
                 ))}
               </div>
 
               {selected.description && (
-                <div>
-                  <p className="text-sm font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Descripción</p>
+                <div className="p-3 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                  <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Descripción</p>
                   <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>{selected.description}</p>
                 </div>
               )}
 
-              {/* Status change */}
+              {/* Status change - larger touch targets */}
               {canEdit && (
                 <div>
-                  <p className="text-sm font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Cambiar estado</p>
-                  <div className="flex flex-wrap gap-2">
+                  <p className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Cambiar estado</p>
+                  <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
                     {ALL_STATUSES.filter(s => s !== 'PROYECTO').map(st => {
                       const sty = STATUS_STYLES[st];
                       const active = selected.status === st;
@@ -324,11 +329,8 @@ export default function ProposalManager({
                         <button
                           key={st}
                           disabled={active}
-                          onClick={async () => {
-                            await updateProposal(selected.id, { status: st });
-                            refresh();
-                          }}
-                          className="px-3 py-1.5 text-xs font-bold rounded-lg border transition-all disabled:opacity-100"
+                          onClick={async () => { await updateProposal(selected.id, { status: st }); refresh(); }}
+                          className="px-3 py-2.5 text-xs font-bold rounded-xl border transition-all disabled:opacity-100 text-center"
                           style={active
                             ? { background: sty.bg, color: sty.color, borderColor: sty.border }
                             : { background: 'var(--bg-surface-alt)', color: 'var(--text-muted)', borderColor: 'var(--border)' }
@@ -347,7 +349,7 @@ export default function ProposalManager({
                 <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
                   <button
                     onClick={handleConvert}
-                    className="flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-xl text-white transition-all"
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-bold rounded-xl text-white transition-all"
                     style={{ background: 'var(--accent)' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-hover)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent)')}
@@ -356,9 +358,6 @@ export default function ProposalManager({
                     Convertir en Proyecto
                     <ArrowRight className="w-4 h-4" />
                   </button>
-                  <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-                    Se creará un nuevo proyecto con el nombre de esta propuesta y se asignará al mismo cliente.
-                  </p>
                 </div>
               )}
             </div>
@@ -374,7 +373,7 @@ export default function ProposalManager({
                 </div>
               )}
               {canEdit && (
-                <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors"
+                <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-xl cursor-pointer transition-colors"
                   style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-alt)' }}
                   onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
                   onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
@@ -383,18 +382,14 @@ export default function ProposalManager({
                     <p className="text-sm font-medium animate-pulse" style={{ color: 'var(--accent)' }}>Subiendo...</p>
                   ) : (
                     <>
-                      <UploadCloud className="w-7 h-7 mb-1" style={{ color: 'var(--text-muted)' }} />
-                      <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                        Agregar fotos <span style={{ color: 'var(--text-muted)' }}>JPG, PNG, WEBP</span>
+                      <UploadCloud className="w-6 h-6 mb-1" style={{ color: 'var(--text-muted)' }} />
+                      <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                        Toca para agregar fotos
                       </p>
                     </>
                   )}
                   <input type="file" accept="image/*" multiple className="hidden"
-                    onChange={e => {
-                      const files = Array.from(e.target.files ?? []);
-                      files.forEach(f => handlePhotoUpload(f));
-                      e.target.value = '';
-                    }}
+                    onChange={e => { const files = Array.from(e.target.files ?? []); files.forEach(f => handlePhotoUpload(f)); e.target.value = ''; }}
                   />
                 </label>
               )}
@@ -411,11 +406,8 @@ export default function ProposalManager({
                       <img src={photo.url} alt={photo.caption ?? 'Foto'} className="w-full h-full object-cover" />
                       {canEdit && (
                         <button
-                          onClick={async () => {
-                            await deleteProposalPhoto(photo.id);
-                            refresh();
-                          }}
-                          className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={async () => { await deleteProposalPhoto(photo.id); refresh(); }}
+                          className="absolute top-2 right-2 p-1.5 rounded-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                           style={{ background: 'var(--danger)', color: '#fff' }}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -440,13 +432,13 @@ export default function ProposalManager({
               {canEdit && (
                 <div className="p-4 rounded-xl border space-y-3" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
                   <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Subir documento</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Nombre</label>
                       <input
                         type="text" placeholder="Ej. Propuesta Técnica" value={docName}
                         onChange={e => setDocName(e.target.value)}
-                        className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                        className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
                         style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                         onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
                         onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
@@ -455,7 +447,7 @@ export default function ProposalManager({
                     <div>
                       <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Tipo</label>
                       <select value={docType} onChange={e => setDocType(e.target.value)}
-                        className="w-full px-3 py-2 text-sm rounded-lg outline-none appearance-none"
+                        className="w-full px-3 py-2.5 text-sm rounded-lg outline-none appearance-none"
                         style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                       >
                         {DOC_TYPES.map(t => <option key={t} value={t}>{DOC_TYPE_LABELS[t]}</option>)}
@@ -479,7 +471,7 @@ export default function ProposalManager({
 
               {selected.documents.length === 0 ? (
                 <p className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  No hay documentos. Sube propuestas, órdenes de compra, reportes o planos.
+                  No hay documentos.
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -509,7 +501,7 @@ export default function ProposalManager({
                             </div>
                             {canEdit && (
                               <button onClick={async () => { await deleteProposalDocument(doc.id); refresh(); }}
-                                className="p-1.5 rounded-lg transition-colors shrink-0 ml-2"
+                                className="p-1.5 rounded-lg ml-2 shrink-0 transition-colors"
                                 style={{ color: 'var(--text-muted)' }}
                                 onMouseEnter={e => (e.currentTarget.style.color = 'var(--danger)')}
                                 onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
@@ -531,61 +523,77 @@ export default function ProposalManager({
           {activeTab === 'materials' && (
             <div className="space-y-4">
               {canEdit && (
-                <form onSubmit={handleAddMaterial}
-                  className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl border"
-                  style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
-                >
-                  <div className="sm:col-span-2">
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Nombre</label>
-                    <input required type="text" placeholder="Ej. Bomba centrífuga 3HP" value={matForm.name}
-                      onChange={e => setMatForm(f => ({ ...f, name: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                      onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-                      onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Categoría</label>
-                    <select value={matForm.category} onChange={e => setMatForm(f => ({ ...f, category: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm rounded-lg outline-none appearance-none"
-                      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                <>
+                  <button
+                    onClick={() => setShowMatForm(!showMatForm)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border transition-colors"
+                    style={{ background: showMatForm ? 'var(--accent-subtle)' : 'var(--bg-surface-alt)', borderColor: showMatForm ? 'var(--accent)' : 'var(--border)', color: showMatForm ? 'var(--accent)' : 'var(--text-primary)' }}
+                  >
+                    <Plus className="w-4 h-4" /> Agregar Material
+                    <ChevronDown className={`w-4 h-4 transition-transform ${showMatForm ? 'rotate-180' : ''}`} />
+                  </button>
+                  {showMatForm && (
+                    <form onSubmit={handleAddMaterial}
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl border"
+                      style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
                     >
-                      {MAT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Cantidad</label>
-                    <input type="number" min="0.01" step="0.01" value={matForm.quantity}
-                      onChange={e => setMatForm(f => ({ ...f, quantity: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                      onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-                      onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Precio Unit.</label>
-                    <input type="number" min="0" step="0.01" value={matForm.unitPrice}
-                      onChange={e => setMatForm(f => ({ ...f, unitPrice: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                      onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-                      onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-                    />
-                  </div>
-                  <div className="sm:col-span-3" />
-                  <div>
-                    <label className="text-xs opacity-0 mb-1 block">.</label>
-                    <button type="submit" disabled={matSubmitting}
-                      className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-bold text-white rounded-lg transition-colors disabled:opacity-50"
-                      style={{ background: 'var(--accent)' }}
-                    >
-                      <Plus className="w-4 h-4" />
-                      {matSubmitting ? '...' : 'Agregar'}
-                    </button>
-                  </div>
-                </form>
+                      <div className="sm:col-span-2">
+                        <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Nombre del material *</label>
+                        <input required type="text" placeholder="Ej. Bomba centrífuga 3HP" value={matForm.name}
+                          onChange={e => setMatForm(f => ({ ...f, name: e.target.value }))}
+                          className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                          onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                          onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Categoría</label>
+                        <select value={matForm.category} onChange={e => setMatForm(f => ({ ...f, category: e.target.value }))}
+                          className="w-full px-3 py-2.5 text-sm rounded-lg outline-none appearance-none"
+                          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                        >
+                          {MAT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Cantidad</label>
+                        <input type="number" min="0.01" step="0.01" value={matForm.quantity}
+                          onChange={e => setMatForm(f => ({ ...f, quantity: e.target.value }))}
+                          className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                          onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                          onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Precio Unitario</label>
+                        <input type="number" min="0" step="0.01" value={matForm.unitPrice}
+                          onChange={e => setMatForm(f => ({ ...f, unitPrice: e.target.value }))}
+                          className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                          onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                          onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                        />
+                      </div>
+                      <div className="sm:col-span-2 flex gap-2">
+                        <button type="submit" disabled={matSubmitting}
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white rounded-lg transition-colors disabled:opacity-50"
+                          style={{ background: 'var(--accent)' }}
+                        >
+                          <Plus className="w-4 h-4" />
+                          {matSubmitting ? 'Guardando...' : 'Guardar Material'}
+                        </button>
+                        <button type="button" onClick={() => setShowMatForm(false)}
+                          className="px-4 py-2.5 text-sm font-medium rounded-lg border transition-colors"
+                          style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </>
               )}
 
               {selected.materials.length === 0 ? (
@@ -594,7 +602,41 @@ export default function ProposalManager({
                 </p>
               ) : (
                 <>
-                  <div className="overflow-x-auto rounded-xl border" style={{ borderColor: 'var(--border)' }}>
+                  {/* Mobile: card list */}
+                  <div className="block sm:hidden space-y-2">
+                    {selected.materials.map((m, i) => (
+                      <div key={m.id} className="p-3 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>{m.name}</p>
+                            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{m.category}</p>
+                          </div>
+                          {canEdit && (
+                            <button onClick={async () => { await deleteProposalMaterial(m.id); refresh(); }}
+                              className="p-1.5 rounded-lg shrink-0" style={{ color: 'var(--danger)', background: 'var(--danger-bg)' }}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {m.quantity} × {fmtCurrency(m.unitPrice)}
+                          </span>
+                          <span className="text-sm font-bold" style={{ color: 'var(--success)' }}>
+                            {fmtCurrency(m.quantity * m.unitPrice)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between px-3 py-3 rounded-xl border font-bold"
+                      style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+                      <span className="text-sm" style={{ color: 'var(--text-muted)' }}>TOTAL MATERIALES</span>
+                      <span className="text-base" style={{ color: 'var(--success)' }}>{fmtCurrency(totalMaterials)}</span>
+                    </div>
+                  </div>
+
+                  {/* Desktop: table */}
+                  <div className="hidden sm:block overflow-x-auto rounded-xl border" style={{ borderColor: 'var(--border)' }}>
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b text-xs uppercase tracking-wider"
@@ -609,9 +651,7 @@ export default function ProposalManager({
                       </thead>
                       <tbody>
                         {selected.materials.map((m, i) => (
-                          <tr key={m.id}
-                            style={{ borderTop: i === 0 ? 'none' : `1px solid var(--border)` }}
-                          >
+                          <tr key={m.id} style={{ borderTop: i === 0 ? 'none' : `1px solid var(--border)` }}>
                             <td className="px-4 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>{m.name}</td>
                             <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>{m.category}</td>
                             <td className="px-4 py-3 text-right" style={{ color: 'var(--text-secondary)' }}>{m.quantity}</td>
@@ -654,16 +694,17 @@ export default function ProposalManager({
      LIST VIEW
      ══════════════════════════════ */
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-5 rounded-2xl border"
+    <div className="space-y-5 animate-fade-in">
+      {/* Header bar - stacked on mobile */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 sm:p-5 rounded-2xl border"
         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
-        <div className="flex flex-wrap gap-2">
+        {/* Status filter chips - horizontal scroll on mobile */}
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {['Todos', ...ALL_STATUSES].map(f => {
             const sty = f === 'Todos' ? null : STATUS_STYLES[f];
             return (
               <button key={f} onClick={() => setStatusFilter(f)}
-                className="px-3 py-1.5 text-xs font-semibold rounded-full transition-all border"
+                className="px-3 py-1.5 text-xs font-semibold rounded-full transition-all border whitespace-nowrap shrink-0"
                 style={
                   statusFilter === f
                     ? sty
@@ -680,7 +721,7 @@ export default function ProposalManager({
         {canEdit && (
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-white text-sm transition-all shrink-0"
             style={{ background: 'var(--accent)' }}
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-hover)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent)')}
@@ -698,14 +739,14 @@ export default function ProposalManager({
           <p className="text-sm font-medium">No hay propuestas en este estado.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(p => {
             const s = STATUS_STYLES[p.status] ?? STATUS_STYLES['BORRADOR'];
             return (
               <div
                 key={p.id}
                 onClick={() => { setSelected(p); setActiveTab('info'); }}
-                className="rounded-2xl p-5 border cursor-pointer transition-all group"
+                className="rounded-2xl p-4 sm:p-5 border cursor-pointer transition-all group"
                 style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
                 onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border-focus)'; el.style.transform = 'translateY(-2px)'; el.style.boxShadow = 'var(--shadow-md)'; }}
                 onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border)'; el.style.transform = ''; el.style.boxShadow = ''; }}
@@ -717,7 +758,7 @@ export default function ProposalManager({
                     {s.label}
                   </span>
                 </div>
-                <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>{p.client.name}</p>
+                <p className="text-sm mb-3 truncate" style={{ color: 'var(--text-muted)' }}>{p.client.name}</p>
                 <div className="flex items-center justify-between border-t pt-3 mt-3" style={{ borderColor: 'var(--border)' }}>
                   <span className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>{fmtCurrency(p.amount)}</span>
                   <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -732,12 +773,16 @@ export default function ProposalManager({
         </div>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* ── Create/Edit Modal - fullscreen on mobile ── */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl overflow-hidden border shadow-2xl"
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm sm:p-4">
+          <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl overflow-hidden border shadow-2xl max-h-[90vh] overflow-y-auto"
             style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
-            <div className="flex items-center justify-between px-6 py-4 border-b"
+            {/* Drag handle for mobile */}
+            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+              <div className="w-10 h-1 rounded-full" style={{ background: 'var(--border)' }} />
+            </div>
+            <div className="flex items-center justify-between px-5 py-4 border-b sticky top-0"
               style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
               <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
                 {editMode ? 'Editar Propuesta' : 'Nueva Propuesta'}
@@ -746,7 +791,7 @@ export default function ProposalManager({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleFormSubmit} className="p-5 space-y-4">
               {formError && (
                 <div className="flex items-center gap-2 p-3 text-sm rounded-lg border"
                   style={{ background: 'var(--danger-bg)', borderColor: 'var(--danger)', color: 'var(--danger)' }}>
@@ -757,7 +802,7 @@ export default function ProposalManager({
                 <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Título *</label>
                 <input required type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                   placeholder="Ej. Sistema HVAC Planta Norte"
-                  className="w-full px-3 py-2.5 rounded-xl outline-none text-sm"
+                  className="w-full px-3 py-3 rounded-xl outline-none text-sm"
                   style={{ background: 'var(--bg-surface-alt)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
                   onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
@@ -766,19 +811,19 @@ export default function ProposalManager({
               <div>
                 <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Cliente *</label>
                 <select required value={form.clientId} onChange={e => setForm(f => ({ ...f, clientId: e.target.value }))}
-                  className="w-full px-3 py-2.5 rounded-xl outline-none text-sm appearance-none"
+                  className="w-full px-3 py-3 rounded-xl outline-none text-sm appearance-none"
                   style={{ background: 'var(--bg-surface-alt)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                 >
                   {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Monto estimado</label>
                   <input type="number" min="0" step="0.01" value={form.amount}
                     onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
                     placeholder="0.00"
-                    className="w-full px-3 py-2.5 rounded-xl outline-none text-sm"
+                    className="w-full px-3 py-3 rounded-xl outline-none text-sm"
                     style={{ background: 'var(--bg-surface-alt)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                     onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
                     onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
@@ -787,7 +832,7 @@ export default function ProposalManager({
                 <div>
                   <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Estado</label>
                   <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl outline-none text-sm appearance-none"
+                    className="w-full px-3 py-3 rounded-xl outline-none text-sm appearance-none"
                     style={{ background: 'var(--bg-surface-alt)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   >
                     {ALL_STATUSES.filter(s => s !== 'PROYECTO').map(s => (
@@ -800,21 +845,21 @@ export default function ProposalManager({
                 <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Descripción</label>
                 <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                   rows={3} placeholder="Descripción, alcance o notas de la propuesta..."
-                  className="w-full px-3 py-2.5 rounded-xl outline-none text-sm resize-none"
+                  className="w-full px-3 py-3 rounded-xl outline-none text-sm resize-none"
                   style={{ background: 'var(--bg-surface-alt)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
                   onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                 />
               </div>
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex gap-3 pt-2 pb-2">
                 <button type="button" onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium rounded-xl border transition-colors"
+                  className="flex-1 px-4 py-3 text-sm font-medium rounded-xl border transition-colors"
                   style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
                 >
                   Cancelar
                 </button>
                 <button type="submit" disabled={submitting}
-                  className="px-5 py-2 text-sm font-bold text-white rounded-xl transition-all disabled:opacity-50"
+                  className="flex-1 px-5 py-3 text-sm font-bold text-white rounded-xl transition-all disabled:opacity-50"
                   style={{ background: 'var(--accent)' }}
                   onMouseEnter={e => { if (!submitting) e.currentTarget.style.background = 'var(--accent-hover)'; }}
                   onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent)')}
