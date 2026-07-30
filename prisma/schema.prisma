@@ -146,10 +146,27 @@ model ProjectTask {
   dependsOnTask       ProjectTask?      @relation("TaskDependency", fields: [dependsOnTaskId], references: [id], onDelete: SetNull)
   dependentTasks      ProjectTask[]     @relation("TaskDependency")
   materials           TaskMaterial[]
+  checklists          TaskChecklistItem[]
 
   @@index([projectDepartmentId])
   @@index([status])
   @@index([dependsOnTaskId])
+}
+
+// =======================
+// Checklists de Calidad por Tarea (QMS)
+// =======================
+model TaskChecklistItem {
+  id          String      @id @default(uuid())
+  taskId      String
+  task        ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  description String      // Ej: "Revisar presión a 80 psi"
+  isCompleted Boolean     @default(false)
+  completedAt DateTime?
+  completedBy String?     // ID del técnico que validó
+  createdAt   DateTime    @default(now())
+
+  @@index([taskId])
 }
 
 // =======================

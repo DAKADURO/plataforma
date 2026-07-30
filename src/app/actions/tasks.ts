@@ -99,6 +99,12 @@ export async function updateTask(data: {
     await prisma.projectTask.update({ where: { id }, data: rest })
 
     if (rest.progress === 100) {
+      const incompleteChecklists = await prisma.taskChecklistItem.count({
+        where: { taskId: id, isCompleted: false }
+      })
+      if (incompleteChecklists > 0) {
+        return { success: false, error: 'No se puede completar la tarea: hay items de control de calidad pendientes.' }
+      }
       await consumeTaskMaterials(id, projectId)
     }
 
@@ -243,4 +249,61 @@ async function recalcProjectProgress(projectId: string, departmentId: string) {
     where: { id: projectId },
     data: { progress: projAvg }
   })
+}
+
+export async function addTaskChecklistItem(data: { taskId: string, description: string, projectId: string }) {
+  try {
+    await requireRole(['ADMIN', 'GERENTE', 'TECNICO'])
+    if (!data.description || data.description.trim() === '') {
+      return { success: false, error: 'La descripción no puede estar vacía.' }
+    }
+
+    const item = await prisma.taskChecklistItem.create({
+      data: {
+        taskId: data.taskId,
+        description: data.description.trim()
+      }
+    })
+
+    revalidatePath(`/proyectos/${data.projectId}`)
+    return { success: true, item }
+  } catch (error) {
+    return { success: false, error: 'No se pudo agregar el item al checklist.' }
+  }
+}
+
+export async function removeTaskChecklistItem(itemId: string, projectId: string) {
+  try {
+    await requireRole(['ADMIN', 'GERENTE', 'TECNICO'])
+    await prisma.taskChecklistItem.delete({ where: { id: itemId } })
+    revalidatePath(`/proyectos/${projectId}`)
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: 'No se pudo eliminar el item del checklist.' }
+  }
+}
+
+export async function toggleTaskChecklistItem(itemId: string, isCompleted: boolean, projectId: string) {
+  try {
+    await requireRole(['ADMIN', 'GERENTE', 'TECNICO'])
+    
+    const { createSupabaseServerClient } = await import('@/lib/supabase-server')
+    const supabase = await createSupabaseServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const dbUser = user ? await prisma.user.findUnique({ where: { email: user.email! } }) : null
+
+    await prisma.taskChecklistItem.update({
+      where: { id: itemId },
+      data: { 
+        isCompleted,
+        completedAt: isCompleted ? new Date() : null,
+        completedBy: isCompleted ? dbUser?.id : null
+      }
+    })
+
+    revalidatePath(`/proyectos/${projectId}`)
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: 'No se pudo actualizar el estado del item.' }
+  }
 }

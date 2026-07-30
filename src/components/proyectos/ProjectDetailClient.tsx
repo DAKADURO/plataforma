@@ -4,7 +4,7 @@
 import React, { useState, useTransition, useRef } from 'react';
 import { updateProjectStatus, updateProjectBudget } from '@/app/actions/projects';
 import { addProjectNote } from '@/app/actions/projects';
-import { createTask, updateTask, deleteTask, addTaskMaterial, removeTaskMaterial } from '@/app/actions/tasks';
+import { createTask, updateTask, deleteTask, addTaskMaterial, removeTaskMaterial, addTaskChecklistItem, removeTaskChecklistItem, toggleTaskChecklistItem } from '@/app/actions/tasks';
 import { addWorkLog, deleteWorkLog } from '@/app/actions/worklogs';
 import { updateProjectContractAmount } from '@/app/actions/projects';
 import { addPayment, markPaymentPaid, markPaymentPending, deletePayment } from '@/app/actions/payments';
@@ -51,6 +51,12 @@ type TaskMaterial = {
   product: { id: string; name: string; sku: string };
 };
 
+type TaskChecklistItem = {
+  id: string;
+  description: string;
+  isCompleted: boolean;
+};
+
 type ProjectTask = {
   id: string;
   name: string;
@@ -61,6 +67,7 @@ type ProjectTask = {
   dependsOnTaskId?: string | null;
   dependsOnTask?: { id: string; name: string; progress: number } | null;
   materials: TaskMaterial[];
+  checklists?: TaskChecklistItem[];
 };
 
 type Product = { id: string; name: string; sku: string; stock: number };
@@ -194,7 +201,12 @@ function TaskRow({
 }) {
   const [isPending, startTransition] = useTransition();
   const [showMaterials, setShowMaterials] = useState(false);
+  const [showChecklists, setShowChecklists] = useState(false);
   const [materials, setMaterials] = useState<TaskMaterial[]>(task.materials || []);
+  const [checklists, setChecklists] = useState<TaskChecklistItem[]>(task.checklists || []);
+  const [newChecklistDesc, setNewChecklistDesc] = useState('');
+  const [savingChecklist, startSavingChecklist] = useTransition();
+  
   const [newMaterialProductId, setNewMaterialProductId] = useState('');
   const [newMaterialQty, setNewMaterialQty] = useState('');
   const [materialError, setMaterialError] = useState('');
@@ -240,6 +252,10 @@ function TaskRow({
       setTaskError(`No se puede iniciar: depende de "${predecessor?.name}" que aún no está completada.`);
       return;
     }
+    if (val === 100 && checklists.some(c => !c.isCompleted)) {
+      setTaskError('Debes completar el checklist de calidad antes de cerrar la tarea.');
+      return;
+    }
     const newStatus = val === 100 ? 'COMPLETADA' : val > 0 ? 'EN_PROGRESO' : 'PENDIENTE';
     onOptimisticUpdate(task.id, { progress: val, status: newStatus });
     if (val === 100) {
@@ -249,7 +265,43 @@ function TaskRow({
       const res = await updateTask({ id: task.id, projectId, projectDepartmentId: departmentId, progress: val, status: newStatus });
       if (!res.success) {
         setTaskError(res.error || 'Error al actualizar el avance');
+        // Revert UI if server blocked it (e.g. checklists not checked on server)
+        if (res.error?.includes('calidad') && val === 100) {
+           onOptimisticUpdate(task.id, { progress: task.progress, status: task.status });
+        }
       }
+    });
+  };
+
+  const handleAddChecklist = () => {
+    if (!newChecklistDesc.trim()) return;
+    startSavingChecklist(async () => {
+      const result = await addTaskChecklistItem({ taskId: task.id, description: newChecklistDesc, projectId });
+      if (result.success && result.item) {
+        setChecklists(prev => [...prev, result.item as TaskChecklistItem]);
+        setNewChecklistDesc('');
+      } else {
+        setTaskError(result.error || 'Error al guardar item.');
+      }
+    });
+  };
+
+  const handleToggleChecklist = (item: TaskChecklistItem) => {
+    const nextVal = !item.isCompleted;
+    setChecklists(prev => prev.map(c => c.id === item.id ? { ...c, isCompleted: nextVal } : c));
+    startSavingChecklist(async () => {
+      const res = await toggleTaskChecklistItem(item.id, nextVal, projectId);
+      if (!res.success) {
+        setTaskError(res.error || 'Error al actualizar item.');
+        setChecklists(prev => prev.map(c => c.id === item.id ? { ...c, isCompleted: !nextVal } : c));
+      }
+    });
+  };
+
+  const handleRemoveChecklist = (id: string) => {
+    setChecklists(prev => prev.filter(c => c.id !== id));
+    startSavingChecklist(async () => {
+      await removeTaskChecklistItem(id, projectId);
     });
   };
 
@@ -401,19 +453,34 @@ function TaskRow({
           />
         </div>
 
-        {/* Materiales */}
-        <button
-          onClick={() => setShowMaterials(v => !v)}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
-          style={materials.length > 0
-            ? { background: 'var(--accent-subtle)', color: 'var(--accent)' }
-            : { background: 'var(--bg-surface-alt)', color: 'var(--text-muted)' }
-          }
-          title="Materiales de esta tarea"
-        >
-          <Package className="w-3.5 h-3.5" />
-          {materials.length > 0 ? materials.length : ''}
-        </button>
+        {/* Checklists y Materiales */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowChecklists(v => { setShowMaterials(false); return !v; })}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
+            style={checklists.length > 0
+              ? (checklists.every(c => c.isCompleted) ? { background: 'var(--success-bg)', color: 'var(--success)' } : { background: 'var(--warning-bg)', color: 'var(--warning)' })
+              : { background: 'var(--bg-surface-alt)', color: 'var(--text-muted)' }
+            }
+            title="Control de Calidad"
+          >
+            <ListChecks className="w-3.5 h-3.5" />
+            {checklists.length > 0 ? `${checklists.filter(c => c.isCompleted).length}/${checklists.length}` : ''}
+          </button>
+          
+          <button
+            onClick={() => setShowMaterials(v => { setShowChecklists(false); return !v; })}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
+            style={materials.length > 0
+              ? { background: 'var(--accent-subtle)', color: 'var(--accent)' }
+              : { background: 'var(--bg-surface-alt)', color: 'var(--text-muted)' }
+            }
+            title="Materiales de esta tarea"
+          >
+            <Package className="w-3.5 h-3.5" />
+            {materials.length > 0 ? materials.length : ''}
+          </button>
+        </div>
 
         {/* Delete */}
         {!isReadOnly && (
@@ -438,6 +505,73 @@ function TaskRow({
           </button>
         )}
       </div>
+
+      {showChecklists && (
+        <div className="px-4 pb-4 space-y-3 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
+          {!isReadOnly && (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Nuevo punto a revisar..."
+                value={newChecklistDesc}
+                onChange={e => setNewChecklistDesc(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleAddChecklist(); }}
+                className="flex-1 rounded-lg px-3 py-2 text-xs outline-none"
+                style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+              />
+              <button
+                onClick={handleAddChecklist}
+                disabled={!newChecklistDesc.trim() || savingChecklist}
+                className="px-3 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-40 shrink-0"
+                style={{ background: 'var(--accent)' }}
+              >
+                Agregar
+              </button>
+            </div>
+          )}
+          {checklists.length === 0 ? (
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Sin items de calidad para esta tarea.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {checklists.map(c => (
+                <div
+                  key={c.id}
+                  className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg"
+                  style={{ background: 'var(--bg-surface-alt)' }}
+                >
+                  <label className="flex items-center gap-3 cursor-pointer select-none min-w-0 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={c.isCompleted}
+                      onChange={() => handleToggleChecklist(c)}
+                      disabled={savingChecklist || (isReadOnly && !c.isCompleted)}
+                      className="w-4 h-4 rounded shrink-0 cursor-pointer disabled:cursor-not-allowed"
+                      style={{ accentColor: 'var(--accent)' }}
+                    />
+                    <span className="text-xs" style={{ 
+                      color: c.isCompleted ? 'var(--text-muted)' : 'var(--text-primary)', 
+                      textDecoration: c.isCompleted ? 'line-through' : 'none' 
+                    }}>
+                      {c.description}
+                    </span>
+                  </label>
+                  {!isReadOnly && (
+                    <button
+                      onClick={() => handleRemoveChecklist(c.id)}
+                      disabled={savingChecklist}
+                      className="p-1 shrink-0 rounded transition-colors disabled:opacity-40"
+                      style={{ color: 'var(--text-muted)' }}
+                      title="Quitar item"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {showMaterials && (
         <div className="px-4 pb-4 space-y-3 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
