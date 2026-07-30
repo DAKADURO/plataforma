@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { createProduct } from '@/app/actions/almacen';
 import { X } from 'lucide-react';
 
-export default function ProductModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export default function ProductModal({ isOpen, onClose, departments }: { isOpen: boolean; onClose: () => void, departments: any[] }) {
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
-  const [department, setDepartment] = useState('General');
+  const [department, setDepartment] = useState(departments[0]?.name || 'General');
   const [itemType, setItemType] = useState('Consumible');
   const [minStock, setMinStock] = useState<number | ''>(5);
   const [loading, setLoading] = useState(false);
@@ -82,12 +82,11 @@ export default function ProductModal({ isOpen, onClose }: { isOpen: boolean; onC
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Departamento</label>
               <select value={department} onChange={e => setDepartment(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                <option value="General">General</option>
-                <option value="HVAC">HVAC</option>
-                <option value="Eléctrico">Eléctrico</option>
-                <option value="Plomería">Plomería</option>
-                <option value="Civil">Civil</option>
-                <option value="Sistemas">Sistemas</option>
+                {departments.map(d => (
+                  <option key={d.id} value={d.name}>
+                    {d.parentId ? `└ ${d.name}` : d.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div>

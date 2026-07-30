@@ -272,6 +272,22 @@ model Product {
   @@index([itemType])
 }
 
+// =======================
+// Almacén: Departamentos Dinámicos
+// =======================
+model Department {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  icon      String   @default("Folder")
+  color     String   @default("#3b82f6")
+  parentId  String?
+  parent    Department? @relation("SubDepartments", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Department[] @relation("SubDepartments")
+  createdAt DateTime @default(now())
+
+  @@index([parentId])
+}
+
 model Inventory {
   id        String   @id @default(uuid())
   productId String

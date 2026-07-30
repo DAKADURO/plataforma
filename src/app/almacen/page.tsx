@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { getProducts, getCategories } from '@/app/actions/almacen'
 import { getProjects } from '@/app/actions/projects'
+import { getDepartments } from '@/app/actions/departments'
 import AlmacenClient from '@/components/almacen/AlmacenClient'
 import KeyboardShortcuts from '@/components/almacen/KeyboardShortcuts'
 import { getCurrentUserRole } from '@/lib/auth'
@@ -13,11 +14,12 @@ export default async function AlmacenPage(props: Props) {
   const category = typeof params.category === 'string' ? params.category : 'Todas';
   const department = typeof params.department === 'string' ? params.department : undefined;
   
-  const [products, allCategories, allProjects, role] = await Promise.all([
+  const [products, allCategories, allProjects, role, deptsRes] = await Promise.all([
     getProducts(),
     getCategories(),
     getProjects(),
-    getCurrentUserRole()
+    getCurrentUserRole(),
+    getDepartments()
   ]);
   
   const activeProjects = allProjects.filter((p: { status: string }) => p.status !== 'CERRADO');
@@ -39,6 +41,7 @@ export default async function AlmacenPage(props: Props) {
           currentDepartment={department}
           projects={activeProjects}
           role={role || 'TECNICO'}
+          departmentsDB={deptsRes.departments || []}
         />
       </main>
 

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, ArrowDownToLine, ArrowUpFromLine, PackageSearch, ArrowLeft, FolderOpen, Trash2, Zap, Droplets, Wind, HardHat, Monitor, Scan, Printer } from 'lucide-react';
+import { Plus, Search, ArrowDownToLine, ArrowUpFromLine, PackageSearch, ArrowLeft, FolderOpen, Trash2, Zap, Droplets, Wind, HardHat, Monitor, Scan, Printer, Wrench, Settings, Package } from 'lucide-react';
 import { deleteProduct, getAlerts } from '@/app/actions/almacen';
 import { getTags } from '@/app/actions/tags';
 import ProductModal from './ProductModal';
@@ -36,14 +36,9 @@ type ProjectOption = {
   name: string;
 };
 
-const DEPARTMENTS_DATA = [
-  { name: 'General',   icon: FolderOpen, accent: 'var(--accent)',   accentBg: 'var(--accent-subtle)' },
-  { name: 'HVAC',      icon: Wind,        accent: '#06b6d4',         accentBg: 'rgba(6,182,212,0.1)' },
-  { name: 'Eléctrico', icon: Zap,         accent: '#f59e0b',         accentBg: 'rgba(245,158,11,0.1)' },
-  { name: 'Plomería',  icon: Droplets,    accent: '#3b82f6',         accentBg: 'rgba(59,130,246,0.1)' },
-  { name: 'Civil',     icon: HardHat,     accent: '#10b981',         accentBg: 'rgba(16,185,129,0.1)' },
-  { name: 'Sistemas',  icon: Monitor,     accent: '#a855f7',         accentBg: 'rgba(168,85,247,0.1)' },
-];
+const AVAILABLE_ICONS: Record<string, any> = {
+  FolderOpen, Wind, Zap, Droplets, HardHat, Monitor, Wrench, Settings, Package
+};
 
 export default function AlmacenClient({
   products,
@@ -59,6 +54,7 @@ export default function AlmacenClient({
   currentDepartment?: string;
   projects: ProjectOption[];
   role: string;
+  departmentsDB?: any[];
 }) {
   const router = useRouter();
   const [isProductModalOpen, setProductModalOpen] = useState(false);
@@ -174,6 +170,17 @@ export default function AlmacenClient({
             )}
             {role !== 'TECNICO' && (
               <button
+                onClick={() => router.push('/almacen/departamentos')}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all border hidden md:flex"
+                style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              >
+                <Settings className="w-4 h-4" /> Áreas
+              </button>
+            )}
+            {role !== 'TECNICO' && (
+              <button
                 onClick={() => setProductModalOpen(true)}
                 className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white transition-all hover:-translate-y-px active:translate-y-0"
                 style={{ background: 'var(--accent)' }}
@@ -188,8 +195,8 @@ export default function AlmacenClient({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {DEPARTMENTS_DATA.map(dept => {
-            const Icon = dept.icon;
+          {(departmentsDB || []).filter(d => !d.parentId).map(dept => {
+            const Icon = AVAILABLE_ICONS[dept.icon] || FolderOpen;
             return (
               <button
                 key={dept.name}
@@ -201,9 +208,9 @@ export default function AlmacenClient({
               >
                 <div
                   className="p-4 rounded-2xl mb-5 border transition-colors"
-                  style={{ background: dept.accentBg, borderColor: 'var(--border)' }}
+                  style={{ background: `${dept.color}15`, borderColor: 'var(--border)' }}
                 >
-                  <Icon className="w-10 h-10" strokeWidth={1.5} style={{ color: dept.accent }} />
+                  <Icon className="w-10 h-10" strokeWidth={1.5} style={{ color: dept.color }} />
                 </div>
                 <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
                   {dept.name}
@@ -216,7 +223,7 @@ export default function AlmacenClient({
           })}
         </div>
 
-        <ProductModal isOpen={isProductModalOpen} onClose={() => setProductModalOpen(false)} />
+        <ProductModal isOpen={isProductModalOpen} onClose={() => setProductModalOpen(false)} departments={departmentsDB || []} />
       </div>
     );
   }
@@ -529,7 +536,7 @@ export default function AlmacenClient({
         </div>
       </div>
 
-      <ProductModal isOpen={isProductModalOpen} onClose={() => setProductModalOpen(false)} />
+      <ProductModal isOpen={isProductModalOpen} onClose={() => setProductModalOpen(false)} departments={departmentsDB || []} />
       <MovementModal
         isOpen={movementState.isOpen}
         onClose={() => setMovementState({ isOpen: false })}
