@@ -7,7 +7,7 @@ import MachinesClient from '@/components/maquinas/MachinesClient'
 export default async function MachinesPage() {
   const [machines, products, projects, role] = await Promise.all([
     getMachines(),
-    getProducts('Todas', 'Todos'),
+    getProducts(undefined, undefined),
     getProjects(),
     getCurrentUserRole()
   ]);
