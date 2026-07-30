@@ -1,18 +1,35 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createProduct } from '@/app/actions/almacen';
+import { getDepartments } from '@/app/actions/departments';
 import { X } from 'lucide-react';
 
-export default function ProductModal({ isOpen, onClose, departments }: { isOpen: boolean; onClose: () => void, departments: any[] }) {
+export default function ProductModal({ isOpen, onClose, departments: initialDepartments }: { isOpen: boolean; onClose: () => void, departments?: any[] }) {
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
-  const [department, setDepartment] = useState(departments[0]?.name || 'General');
+  const [department, setDepartment] = useState('General');
   const [itemType, setItemType] = useState('Consumible');
   const [minStock, setMinStock] = useState<number | ''>(5);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fetchedDepartments, setFetchedDepartments] = useState<any[]>(initialDepartments || []);
+
+  useEffect(() => {
+    if (isOpen && !initialDepartments) {
+      getDepartments().then(res => {
+        if (res.success && res.departments) {
+          setFetchedDepartments(res.departments);
+          if (res.departments.length > 0) {
+            setDepartment(res.departments[0].name);
+          }
+        }
+      });
+    } else if (isOpen && initialDepartments && initialDepartments.length > 0) {
+      setDepartment(initialDepartments[0].name);
+    }
+  }, [isOpen, initialDepartments]);
 
   if (!isOpen) return null;
 
@@ -82,7 +99,7 @@ export default function ProductModal({ isOpen, onClose, departments }: { isOpen:
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Departamento</label>
               <select value={department} onChange={e => setDepartment(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                {departments.map(d => (
+                {fetchedDepartments.map(d => (
                   <option key={d.id} value={d.name}>
                     {d.parentId ? `└ ${d.name}` : d.name}
                   </option>
