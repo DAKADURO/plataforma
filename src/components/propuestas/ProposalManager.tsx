@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
@@ -104,6 +104,10 @@ export default function ProposalManager({
       if (refreshed) setSelected(refreshed);
     }
   };
+
+  useEffect(() => {
+    syncSelected(initialProposals);
+  }, [initialProposals]);
 
   const openCreate = () => {
     setForm({ clientId: clients[0]?.id ?? '', title: '', description: '', amount: '', status: 'BORRADOR' });
