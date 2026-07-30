@@ -10,13 +10,13 @@ import { z } from 'zod'
 // [SEC-FIX #1] Roles activos del sistema (excluye PENDIENTE)
 const ACTIVE_ROLES = ['ADMIN', 'GERENTE', 'TECNICO']
 
-export async function getProducts(category?: string, department?: string, tagIds?: string[]) {
+export async function getProducts(category?: string, departments?: string[], tagIds?: string[]) {
   // [SEC-FIX #1] Proteger lectura de inventario contra usuarios PENDIENTE
   await requireRole(ACTIVE_ROLES)
   const products = await prisma.product.findMany({
     where: {
       ...(category && category !== 'Todas' ? { category } : {}),
-      ...(department && department !== 'Todos' ? { department } : {}),
+      ...(departments && departments.length > 0 ? { department: { in: departments } } : {}),
       ...(tagIds && tagIds.length > 0 ? { tags: { some: { tagId: { in: tagIds } } } } : {})
     },
     include: { tags: { include: { tag: true } } },

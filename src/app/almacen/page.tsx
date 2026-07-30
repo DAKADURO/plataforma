@@ -13,15 +13,29 @@ export default async function AlmacenPage(props: Props) {
   
   const category = typeof params.category === 'string' ? params.category : 'Todas';
   const department = typeof params.department === 'string' ? params.department : undefined;
-  
-  const [products, allCategories, allProjects, role, deptsRes] = await Promise.all([
-    getProducts(),
+
+  // Fetch departments first so we can include sub-departments in the product filter
+  const [allCategories, allProjects, role, deptsRes] = await Promise.all([
     getCategories(),
     getProjects(),
     getCurrentUserRole(),
-    getDepartments()
+    getDepartments(),
   ]);
-  
+
+  // Build department filter: include selected department + all its direct children
+  let departmentFilter: string[] | undefined = undefined;
+  if (department) {
+    const allDepts: any[] = deptsRes.departments || [];
+    const parent = allDepts.find((d: any) => d.name === department);
+    const children = allDepts.filter((d: any) => d.parentId === parent?.id);
+    departmentFilter = [department, ...children.map((d: any) => d.name)];
+  }
+
+  const products = await getProducts(
+    category !== 'Todas' ? category : undefined,
+    departmentFilter,
+  );
+
   const activeProjects = allProjects.filter((p: { status: string }) => p.status !== 'CERRADO');
 
   return (
