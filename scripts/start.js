@@ -17,11 +17,12 @@ async function start() {
   try {
     console.log('Initializing database...');
 
-    // Try to deploy migrations, but don't fail on P3005
+    // Try to deploy migrations, but don't fail on P3005 or other expected errors
     try {
-      await runCommand('npx', ['prisma', 'migrate', 'deploy', '--skip-generate']);
+      await runCommand('npx', ['prisma', 'migrate', 'deploy']);
       console.log('✓ Migrations deployed');
     } catch (error) {
+      // Expected for existing databases: P3005 (schema not empty), migration conflicts, etc.
       console.log('⚠ Migration error (this may be normal for existing databases)');
       // Continue anyway - the schema might already exist
     }
