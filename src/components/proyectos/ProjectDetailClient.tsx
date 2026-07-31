@@ -721,6 +721,7 @@ export default function ProjectDetailClient({ project, role, products = [] }: { 
   const [newTaskStart, setNewTaskStart] = useState('');
   const [newTaskEnd, setNewTaskEnd] = useState('');
   const [newTaskPredecessor, setNewTaskPredecessor] = useState('');
+  const [autoInheritDates, setAutoInheritDates] = useState(true);
   const [addingTask, startAddingTask] = useTransition();
   const [viewMode, setViewMode] = useState<'LISTA' | 'GANTT'>('LISTA');
 
@@ -741,6 +742,23 @@ export default function ProjectDetailClient({ project, role, products = [] }: { 
     departments.length === 0
       ? 0
       : Math.round(departments.reduce((s, d) => s + d.progress, 0) / departments.length);
+
+  const handlePredecessorChangeInForm = (predId: string) => {
+    setNewTaskPredecessor(predId);
+    if (autoInheritDates && predId) {
+      const selectedPred = allProjectTasks.find(t => t.id === predId);
+      if (selectedPred) {
+        if (selectedPred.endDate) {
+          setNewTaskStart(toDateInput(selectedPred.endDate));
+          const endDate = new Date(selectedPred.endDate);
+          endDate.setDate(endDate.getDate() + 2);
+          setNewTaskEnd(toDateInput(endDate));
+        } else if (selectedPred.startDate) {
+          setNewTaskStart(toDateInput(selectedPred.startDate));
+        }
+      }
+    }
+  };
 
   const handleAddDepartment = (deptNameToAdd?: string) => {
     const nameToUse = (deptNameToAdd || newDeptName).trim();
@@ -1318,24 +1336,50 @@ export default function ProjectDetailClient({ project, role, products = [] }: { 
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold mb-1 uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-                      <Link2 className="w-3 h-3" /> Predecesora
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[10px] font-bold uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                        <Link2 className="w-3 h-3" /> Predecesora
+                      </label>
+                      <label className="flex items-center gap-1 cursor-pointer text-[10px] font-bold text-amber-400 hover:text-amber-300" title="Activar/Desactivar herencia automática de fechas desde la tarea predecesora">
+                        <input
+                          type="checkbox"
+                          checked={autoInheritDates}
+                          onChange={e => setAutoInheritDates(e.target.checked)}
+                          className="w-3 h-3 rounded cursor-pointer accent-amber-500"
+                        />
+                        <span>⚡ Herencia de fechas</span>
+                      </label>
+                    </div>
                     <select
                       value={newTaskPredecessor}
-                      onChange={e => setNewTaskPredecessor(e.target.value)}
+                      onChange={e => handlePredecessorChangeInForm(e.target.value)}
                       style={inputFieldStyle}
                     >
                       <option value="">(Ninguna)</option>
                       {allProjectTasks.map(t => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
+                        <option key={t.id} value={t.id}>{t.name} {t.endDate ? `[Fin: ${formatDateOnly(t.endDate)}]` : ''}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold mb-1 uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-                      <Calendar className="w-3 h-3" /> Inicio
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[10px] font-bold uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                        <Calendar className="w-3 h-3" /> Inicio
+                      </label>
+                      {newTaskPredecessor && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const p = allProjectTasks.find(t => t.id === newTaskPredecessor);
+                            if (p?.endDate) setNewTaskStart(toDateInput(p.endDate));
+                          }}
+                          className="text-[9px] font-bold text-amber-400 hover:underline"
+                          title="Copiar fecha de fin de la predecesora"
+                        >
+                          ⚡ Copiar fecha
+                        </button>
+                      )}
+                    </div>
                     <input type="date" value={newTaskStart} onChange={e => setNewTaskStart(e.target.value)} style={inputFieldStyle}
                       onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
                       onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')} />
