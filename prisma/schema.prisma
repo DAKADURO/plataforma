@@ -253,7 +253,9 @@ model Product {
   sku        String      @unique
   name       String
   category   String
-  department String      @default("General")
+  department String      @default("General") // DEPRECATED: usar departmentId, mantener por migración
+  departmentId String?
+  dept       Department? @relation("ProductDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
   itemType   String      @default("Consumible")
   minStock   Int         @default(5)
   stock      Int         @default(0)
@@ -269,6 +271,7 @@ model Product {
 
   @@index([category])
   @@index([department])
+  @@index([departmentId])
   @@index([itemType])
 }
 
@@ -286,6 +289,7 @@ model Department {
   parentId  String?
   parent    Department? @relation("SubDepartments", fields: [parentId], references: [id], onDelete: Cascade)
   children  Department[] @relation("SubDepartments")
+  products  Product[] @relation("ProductDepartment")
   createdAt DateTime @default(now())
 
   @@index([parentId])
