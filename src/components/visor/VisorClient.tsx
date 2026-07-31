@@ -494,6 +494,52 @@ export default function VisorClient({ initialProjects }: { initialProjects: Proj
                       </div>
                     )}
 
+                    {/* ¿Qué falta? (Tareas Pendientes en Carrusel TV) */}
+                    {(() => {
+                      const tasks = activeCarouselProject.departments?.flatMap(d => d.tasks || []) || [];
+                      const pending = tasks.filter(t => t.status !== 'COMPLETADA');
+                      return (
+                        <div className="bg-blue-500/5 border border-blue-500/15 p-4 rounded-2xl space-y-2">
+                          <span className="text-xs font-extrabold text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                            <ListTodo className="w-4 h-4" /> ¿Qué falta en este proyecto? ({pending.length} pendientes)
+                          </span>
+                          {pending.length === 0 ? (
+                            <p className="text-xs text-emerald-400 font-medium italic pt-1">¡Excelente! Todas las tareas registradas están completadas al 100%.</p>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                              {pending.slice(0, 4).map((t, idx) => (
+                                <div key={t.id || idx} className="flex items-center justify-between text-xs bg-black/30 p-2.5 rounded-xl border border-white/5">
+                                  <span className="text-slate-200 font-medium truncate">• {t.name || 'Tarea de proyecto'}</span>
+                                  <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 ml-1">
+                                    {t.status === 'EN_PROGRESO' ? 'En Progreso' : 'Pendiente'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Comunicados y Notas de Planta */}
+                    {activeCarouselProject.notes && activeCarouselProject.notes.length > 0 && (
+                      <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl space-y-2">
+                        <span className="text-xs font-extrabold text-amber-400 uppercase tracking-widest flex items-center gap-2">
+                          📢 Últimos Comunicados de Planta ({activeCarouselProject.notes.length})
+                        </span>
+                        <div className="space-y-2">
+                          {activeCarouselProject.notes.slice(0, 2).map(n => (
+                            <div key={n.id} className="text-xs text-amber-200/90 font-medium bg-black/30 p-2.5 rounded-xl border border-amber-500/10">
+                              "{n.content}"
+                              <span className="text-[10px] text-amber-400/70 block mt-1">
+                                • Publicado a las {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                   </div>
 
                   {/* Right Column: Giant Radial Progress Gauge */}
