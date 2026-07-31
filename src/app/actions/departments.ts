@@ -16,7 +16,7 @@ const ALLOWED_ICONS = [
 const createDepartmentSchema = z.object({
   name: z.string().min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres'),
   icon: z.enum(ALLOWED_ICONS as [string, ...string[]], {
-    errorMap: () => ({ message: `Icon debe ser uno de: ${ALLOWED_ICONS.join(', ')}` })
+    message: `Icon debe ser uno de: ${ALLOWED_ICONS.join(', ')}`
   }),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color debe ser hexadecimal válido (ej: #3b82f6)'),
   parentId: z.string().uuid().optional().nullable(),
