@@ -3,7 +3,11 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Settings, Wrench, FileText, ArrowLeft, Activity, ShieldAlert, CheckCircle2, Car, Laptop, Box, Globe, Calendar, Trash2 } from 'lucide-react';
+import {
+  Plus, Settings, Wrench, FileText, ArrowLeft, Activity, ShieldAlert,
+  CheckCircle2, Car, Laptop, Box, Globe, Calendar, Trash2, Search,
+  Briefcase, DollarSign, Cpu
+} from 'lucide-react';
 import Button from '@/components/ui/Button';
 import dynamic from 'next/dynamic';
 import { updateMachineDailyRate } from '@/app/actions/machines';
@@ -17,8 +21,6 @@ type Machine = any;
 type Product = any;
 type Project = any;
 
-// Las fechas de inicio/fin vienen de <input type="date"> y se guardan como medianoche UTC;
-// comparamos por fecha calendario en UTC para no perder/ganar un día según la zona horaria local.
 function daysBetween(start: Date, end: Date): number {
   const s = new Date(start);
   const e = new Date(end);
@@ -30,6 +32,20 @@ function daysBetween(start: Date, end: Date): number {
 function formatDateOnly(d: Date): string {
   return new Date(d).toLocaleDateString('es-MX', { timeZone: 'UTC' });
 }
+
+const CATEGORY_ICONS: Record<string, any> = {
+  'Vehículo': Car,
+  'Computación / IT': Laptop,
+  'Herramienta Especial': Wrench,
+  'Maquinaria': Cpu,
+};
+
+const CATEGORY_COLORS: Record<string, { color: string; bg: string }> = {
+  'Vehículo': { color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  'Computación / IT': { color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
+  'Herramienta Especial': { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  'Maquinaria': { color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+};
 
 export default function MachinesClient({
   machines,
@@ -43,8 +59,6 @@ export default function MachinesClient({
   role: string;
 }) {
   const router = useRouter();
-  // Guardamos solo el id y derivamos la máquina de la lista en cada render, así
-  // router.refresh() (tras guardar tarifa/asignación) siempre refleja datos frescos.
   const [selectedMachineId, setSelectedMachineId] = useState<string | null>(null);
   const selectedMachine = selectedMachineId ? machines.find((m: any) => m.id === selectedMachineId) || null : null;
   const [activeTab, setActiveTab] = useState<'info' | 'materials' | 'maintenance' | 'assignments' | 'docs'>('info');
@@ -62,6 +76,10 @@ export default function MachinesClient({
   const [assignEnd, setAssignEnd] = useState('');
   const [assignError, setAssignError] = useState('');
   const [assigning, startAssigning] = useTransition();
+
+  // Filters & Search
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
 
   const openMachine = (m: Machine) => {
     setSelectedMachineId(m.id);
@@ -119,99 +137,243 @@ export default function MachinesClient({
     });
   };
 
+  // Stats calculations
+  const totalMachines = machines.length;
+  const activeCount = machines.filter(m => m.status === 'ACTIVA').length;
+  const maintenanceCount = machines.filter(m => m.status === 'MANTENIMIENTO').length;
+  const assignedCount = machines.filter(m => (m.assignments || []).some((a: any) => !a.endDate)).length;
+
+  const categories = ['Todas', ...Array.from(new Set(machines.map(m => m.category || 'Maquinaria')))];
+
+  const filteredMachines = machines.filter(m => {
+    const term = searchTerm.toLowerCase();
+    const matchesSearch = term === '' ||
+      m.name.toLowerCase().includes(term) ||
+      (m.serialNumber && m.serialNumber.toLowerCase().includes(term)) ||
+      (m.brand && m.brand.toLowerCase().includes(term));
+    const matchesCat = selectedCategory === 'Todas' || (m.category || 'Maquinaria') === selectedCategory;
+    return matchesSearch && matchesCat;
+  });
+
+  /* ══════════════════════════════
+     GRID VIEW (MAIN RECURSOS)
+     ══════════════════════════════ */
   if (!selectedMachine) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
+        {/* KPI Stats Bar */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl border flex items-center justify-between shadow-sm" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Total Recursos</p>
+              <p className="text-2xl font-extrabold mt-1" style={{ color: 'var(--text-primary)' }}>{totalMachines}</p>
+            </div>
+            <div className="p-3 rounded-xl border" style={{ background: 'var(--accent-subtle)', borderColor: 'transparent' }}>
+              <Box className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl border flex items-center justify-between shadow-sm" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Operativos / Activos</p>
+              <p className="text-2xl font-extrabold mt-1 text-emerald-500">{activeCount}</p>
+            </div>
+            <div className="p-3 rounded-xl border" style={{ background: 'rgba(16,185,129,0.1)', borderColor: 'transparent' }}>
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl border flex items-center justify-between shadow-sm" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>En Mantenimiento</p>
+              <p className="text-2xl font-extrabold mt-1" style={{ color: maintenanceCount > 0 ? '#f59e0b' : 'var(--text-primary)' }}>{maintenanceCount}</p>
+            </div>
+            <div className="p-3 rounded-xl border" style={{ background: maintenanceCount > 0 ? 'rgba(245,158,11,0.1)' : 'var(--bg-surface-alt)', borderColor: 'transparent' }}>
+              <Wrench className="w-5 h-5" style={{ color: maintenanceCount > 0 ? '#f59e0b' : 'var(--text-muted)' }} />
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl border flex items-center justify-between shadow-sm" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Asignados a Proyecto</p>
+              <p className="text-2xl font-extrabold mt-1 text-purple-500">{assignedCount}</p>
+            </div>
+            <div className="p-3 rounded-xl border" style={{ background: 'rgba(168,85,247,0.1)', borderColor: 'transparent' }}>
+              <Briefcase className="w-5 h-5 text-purple-500" />
+            </div>
+          </div>
+        </div>
+
+        {/* Toolbar & Filters */}
         <div
-          className="flex justify-between items-center p-4 rounded-xl border"
+          className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl border shadow-sm"
           style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
         >
-          <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            Recursos y Equipos Registrados
-          </h2>
+          {/* Search bar */}
+          <div className="relative flex-1 w-full min-w-0">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, SKU o número de serie..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition-all border"
+              style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+              onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+            />
+          </div>
+
+          {/* Action button */}
           {role !== 'TECNICO' && (
-            <Button onClick={() => setMachineModalOpen(true)} variant="primary">
-              <Plus className="w-4 h-4 mr-1" />
-              Nuevo Recurso
-            </Button>
+            <button
+              onClick={() => setMachineModalOpen(true)}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-md hover:scale-[1.02] active:scale-[0.98] shrink-0"
+              style={{ background: 'var(--accent)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-hover)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent)')}
+            >
+              <Plus className="w-4 h-4" /> Nuevo Recurso
+            </button>
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {machines.length === 0 ? (
-            <div className="col-span-full text-center py-12" style={{ color: 'var(--text-muted)' }}>
+        {/* Category Filter Chips */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <span className="text-xs font-bold uppercase tracking-wider shrink-0 mr-1" style={{ color: 'var(--text-muted)' }}>Categorías:</span>
+          {categories.map(cat => {
+            const count = cat === 'Todas' ? machines.length : machines.filter(m => (m.category || 'Maquinaria') === cat).length;
+            const isSelected = selectedCategory === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className="px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border shrink-0 flex items-center gap-1.5"
+                style={isSelected
+                  ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
+                  : { background: 'var(--bg-surface)', color: 'var(--text-secondary)', borderColor: 'var(--border)' }}
+              >
+                <span>{cat}</span>
+                <span className="opacity-70 text-[10px]">({count})</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredMachines.length === 0 ? (
+            <div className="col-span-full text-center py-16 border border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
               <Box className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              No hay recursos registrados.
+              <p className="text-sm font-medium">No se encontraron recursos.</p>
             </div>
           ) : (
-            machines.map((m: any) => {
-              const Icon =
-                m.category === 'Vehículo' ? Car
-                : m.category === 'Computación / IT' ? Laptop
-                : m.category === 'Herramienta Especial' ? Wrench
-                : Settings;
+            filteredMachines.map((m: any) => {
+              const catKey = m.category || 'Maquinaria';
+              const Icon = CATEGORY_ICONS[catKey] || Settings;
+              const catTheme = CATEGORY_COLORS[catKey] || { color: 'var(--accent)', bg: 'var(--accent-subtle)' };
+              
+              const isValidImageUrl = m.imageUrl && (m.imageUrl.startsWith('http://') || m.imageUrl.startsWith('https://') || m.imageUrl.startsWith('/'));
+              const activeAssignment = (m.assignments || []).find((a: any) => !a.endDate);
+
               return (
                 <div
                   key={m.id}
                   onClick={() => openMachine(m)}
-                  className="rounded-xl p-6 cursor-pointer transition-all overflow-hidden relative border"
+                  className="group rounded-2xl p-5 cursor-pointer transition-all duration-200 relative border flex flex-col justify-between"
                   style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
                   onMouseEnter={e => {
                     const el = e.currentTarget as HTMLElement;
-                    el.style.borderColor = 'var(--accent)';
-                    el.style.boxShadow = '0 4px 20px -4px rgba(37,99,235,0.15)';
+                    el.style.borderColor = 'var(--border-focus)';
+                    el.style.transform = 'translateY(-2px)';
+                    el.style.boxShadow = 'var(--shadow-md)';
                   }}
                   onMouseLeave={e => {
                     const el = e.currentTarget as HTMLElement;
                     el.style.borderColor = 'var(--border)';
+                    el.style.transform = '';
                     el.style.boxShadow = '';
                   }}
                 >
-                  {m.imageUrl && (
-                    <div
-                      className="h-32 -mx-6 -mt-6 mb-4 border-b overflow-hidden"
-                      style={{ borderColor: 'var(--border)' }}
-                    >
-                      <img
-                        src={m.imageUrl}
-                        alt={m.name}
-                        className="w-full h-full object-cover opacity-80 transition-opacity"
-                      />
-                    </div>
-                  )}
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
+                  <div>
+                    {/* Header Image or Banner */}
+                    {isValidImageUrl && (
                       <div
-                        className="p-3 rounded-lg transition-colors"
-                        style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}
+                        className="h-36 -mx-5 -mt-5 mb-4 border-b overflow-hidden relative"
+                        style={{ borderColor: 'var(--border)' }}
                       >
-                        <Icon className="w-6 h-6" />
+                        <img
+                          src={m.imageUrl}
+                          alt={m.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }}
+                        />
                       </div>
-                      <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
-                        {m.category || 'Maquinaria'}
+                    )}
+
+                    {/* Top Row Badges */}
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="p-2 rounded-xl border flex items-center justify-center"
+                          style={{ background: catTheme.bg, borderColor: 'transparent' }}
+                        >
+                          <Icon className="w-4 h-4" style={{ color: catTheme.color }} />
+                        </div>
+                        <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                          {catKey}
+                        </span>
+                      </div>
+
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border ${
+                          m.status === 'ACTIVA'
+                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                            : m.status === 'MANTENIMIENTO'
+                            ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                            : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          m.status === 'ACTIVA' ? 'bg-emerald-500' : m.status === 'MANTENIMIENTO' ? 'bg-amber-500' : 'bg-rose-500'
+                        }`} />
+                        {m.status}
                       </span>
                     </div>
-                    <span
-                      className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded border ${
-                        m.status === 'ACTIVA'
-                          ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                          : m.status === 'MANTENIMIENTO'
-                          ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                          : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                      }`}
-                    >
-                      {m.status}
-                    </span>
+
+                    {/* Title & Serial */}
+                    <h3 className="text-lg font-bold mb-1 group-hover:text-blue-500 transition-colors" style={{ color: 'var(--text-primary)' }}>
+                      {m.name}
+                    </h3>
+                    <p className="text-xs font-mono mb-3" style={{ color: 'var(--text-muted)' }}>
+                      S/N: {m.serialNumber || 'Sin serie'}
+                    </p>
+
+                    {/* Active Assignment Badge */}
+                    {activeAssignment && (
+                      <div className="mb-3 px-3 py-1.5 rounded-xl border flex items-center gap-2 text-xs" style={{ background: 'rgba(168,85,247,0.08)', borderColor: 'rgba(168,85,247,0.2)', color: '#a855f7' }}>
+                        <Briefcase className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate font-semibold">{activeAssignment.project?.name}</span>
+                      </div>
+                    )}
                   </div>
-                  <h3 className="text-lg font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{m.name}</h3>
-                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>S/N: {m.serialNumber}</p>
-                  {m.isImported && (
-                    <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border"
-                      style={{ background: 'rgba(245,158,11,0.1)', color: '#d97706', borderColor: 'rgba(245,158,11,0.3)' }}>
-                      <Globe className="w-3 h-3" />
-                      Importado
+
+                  {/* Footer Stats Row */}
+                  <div className="flex items-center justify-between border-t pt-3 mt-2" style={{ borderColor: 'var(--border)' }}>
+                    <div className="flex items-center gap-1.5">
+                      {m.isImported && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border"
+                          style={{ background: 'rgba(245,158,11,0.1)', color: '#d97706', borderColor: 'rgba(245,158,11,0.3)' }}>
+                          <Globe className="w-3 h-3" /> Importado
+                        </span>
+                      )}
                     </div>
-                  )}
+                    {m.dailyRate > 0 && (
+                      <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                        ${m.dailyRate.toLocaleString()} / día
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
             })
@@ -223,31 +385,55 @@ export default function MachinesClient({
     );
   }
 
+  /* ══════════════════════════════
+     DETAIL VIEW
+     ══════════════════════════════ */
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => setSelectedMachineId(null)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border"
-          style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
-        >
-          <ArrowLeft className="w-4 h-4" /> Volver a Lista
-        </button>
-        <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-          {selectedMachine.name}
-        </h2>
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl border shadow-sm" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setSelectedMachineId(null)}
+            className="flex items-center justify-center w-10 h-10 rounded-xl transition-all border shrink-0"
+            style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+            title="Volver a Lista"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
+                {selectedMachine.name}
+              </h2>
+              <span
+                className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border ${
+                  selectedMachine.status === 'ACTIVA'
+                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                    : selectedMachine.status === 'MANTENIMIENTO'
+                    ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                    : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                }`}
+              >
+                {selectedMachine.status}
+              </span>
+            </div>
+            <p className="text-xs text-muted mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              S/N: {selectedMachine.serialNumber} · {selectedMachine.category || 'Maquinaria'}
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="flex border-b" style={{ borderColor: 'var(--border)' }}>
+      <div className="flex border-b overflow-x-auto scrollbar-hide" style={{ borderColor: 'var(--border)' }}>
         {(['info', 'materials', 'maintenance', 'assignments', 'docs'] as const).map(tab => {
           const labels = { info: 'Información', materials: 'Lista de Materiales', maintenance: 'Mantenimiento', assignments: 'Asignaciones a Proyectos', docs: 'Documentos' };
           return (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className="px-4 py-3 text-sm font-medium border-b-2 transition-colors"
+              className="px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap shrink-0"
               style={{
                 borderColor: activeTab === tab ? 'var(--accent)' : 'transparent',
                 color: activeTab === tab ? 'var(--accent)' : 'var(--text-muted)',
@@ -262,12 +448,12 @@ export default function MachinesClient({
       </div>
 
       <div
-        className="rounded-xl p-6 min-h-[400px] border"
+        className="rounded-2xl p-6 min-h-[400px] border shadow-sm"
         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
       >
         {activeTab === 'info' && (
           <div className="flex flex-col md:flex-row gap-8">
-            {selectedMachine.imageUrl && (
+            {selectedMachine.imageUrl && (selectedMachine.imageUrl.startsWith('http://') || selectedMachine.imageUrl.startsWith('https://') || selectedMachine.imageUrl.startsWith('/')) && (
               <div className="w-full md:w-1/3 lg:w-1/4">
                 <img
                   src={selectedMachine.imageUrl}
