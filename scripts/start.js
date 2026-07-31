@@ -20,7 +20,7 @@ async function start() {
     // For Supabase/managed databases, use db push to sync schema
     // This is more suitable than migrations for existing databases
     try {
-      await runCommand('npx', ['prisma', 'db', 'push', '--skip-generate']);
+      await runCommand('npx', ['prisma', 'db', 'push', '--accept-data-loss']);
       console.log('✓ Database schema synchronized');
     } catch (error) {
       console.log('⚠ Database sync error - attempting to continue');
