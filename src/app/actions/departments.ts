@@ -33,7 +33,6 @@ export async function getDepartments() {
     const departments = await prisma.department.findMany({
       include: {
         children: true,
-        _count: { select: { products: true } }
       },
       orderBy: { name: 'asc' }
     });
@@ -85,7 +84,7 @@ export async function createDepartment(data: { name: string, icon: string, color
         color: validation.data.color,
         parentId: validation.data.parentId || null
       },
-      include: { _count: { select: { products: true } } }
+      include: { children: true }
     });
 
     revalidatePath('/almacen');
@@ -126,7 +125,7 @@ export async function updateDepartment(id: string, data: { name?: string, icon?:
         color: validation.data.color,
         parentId: validation.data.parentId !== undefined ? validation.data.parentId : undefined
       },
-      include: { _count: { select: { products: true } } }
+      include: { children: true }
     });
 
     revalidatePath('/almacen');
@@ -148,7 +147,6 @@ export async function deleteDepartment(id: string) {
       where: { id },
       include: {
         children: true,
-        _count: { select: { products: true } }
       }
     });
 
@@ -162,10 +160,11 @@ export async function deleteDepartment(id: string) {
     }
 
     // Verificar si tiene productos asociados
-    if (dept._count.products > 0) {
+    const productCount = await prisma.product.count({ where: { department: dept.name } });
+    if (productCount > 0) {
       return {
         success: false,
-        error: `No se puede eliminar: hay ${dept._count.products} producto(s) asignado(s) a este departamento.`
+        error: `No se puede eliminar: hay ${productCount} producto(s) asignado(s) a este departamento.`
       };
     }
 
