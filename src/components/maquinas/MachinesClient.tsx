@@ -4,7 +4,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Plus, Settings, Wrench, FileText, ArrowLeft, Activity, ShieldAlert,
+  Plus, Settings, Wrench, FileText, ArrowLeft, Activity, ShieldAlert, ShieldCheck,
   CheckCircle2, Car, Laptop, Box, Globe, Calendar, Trash2, Search,
   Briefcase, DollarSign, Cpu
 } from 'lucide-react';
@@ -588,45 +588,111 @@ export default function MachinesClient({
         )}
 
         {activeTab === 'maintenance' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                Historial de Mantenimiento
-              </h3>
-              <Button onClick={() => setMaintenanceModalOpen(true)} variant="primary" className="text-sm py-1.5">
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
+              <div>
+                <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                  <Wrench className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+                  Historial de Mantenimiento y Servicios
+                </h3>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  Registro de afinaciones, servicios preventivos y reparaciones del equipo.
+                </p>
+              </div>
+              <Button onClick={() => setMaintenanceModalOpen(true)} variant="primary" className="text-sm py-2 px-4 flex items-center gap-2 font-bold shadow-md shrink-0">
+                <Plus className="w-4 h-4" />
                 Registrar Mantenimiento
               </Button>
             </div>
+
+            {/* Quick Metrics Bar for Machine Maintenance */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-3.5 rounded-xl border flex items-center justify-between" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Servicios Registrados</span>
+                  <span className="text-xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>{selectedMachine.maintenances?.length || 0}</span>
+                </div>
+                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                  <Wrench className="w-4 h-4" />
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl border flex items-center justify-between" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Último Servicio</span>
+                  <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
+                    {selectedMachine.maintenances && selectedMachine.maintenances.length > 0
+                      ? new Date(selectedMachine.maintenances[0].date).toLocaleDateString()
+                      : 'Sin registros'}
+                  </span>
+                </div>
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                  <Calendar className="w-4 h-4" />
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl border flex items-center justify-between" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Estado Técnico</span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded border inline-block mt-0.5" style={{ background: 'var(--success-bg)', color: 'var(--success)', borderColor: 'var(--success)' }}>
+                    🟢 En Regla
+                  </span>
+                </div>
+                <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+
             {selectedMachine.maintenances?.length === 0 ? (
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                No hay registros de mantenimiento.
-              </p>
+              <div
+                onClick={() => setMaintenanceModalOpen(true)}
+                className="cursor-pointer text-center p-10 border-2 border-dashed rounded-2xl transition-all group"
+                style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-alt)' }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+              >
+                <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center transition-transform group-hover:scale-110" style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}>
+                  <Wrench className="w-7 h-7" />
+                </div>
+                <h4 className="text-base font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
+                  Sin Historial de Mantenimiento Registrado
+                </h4>
+                <p className="text-xs mb-4 max-w-md mx-auto" style={{ color: 'var(--text-muted)' }}>
+                  Lleva la bitácora técnica de este activo (cambios de aceite, servicios preventivos o afinación) para prevenir averías.
+                </p>
+                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-sm" style={{ background: 'var(--accent)' }}>
+                  <Plus className="w-4 h-4" /> Registrar Primer Mantenimiento
+                </span>
+              </div>
             ) : (
               <div className="space-y-3">
                 {selectedMachine.maintenances.map((log: any) => (
                   <div
                     key={log.id}
-                    className="p-4 rounded-lg border"
+                    className="p-4 rounded-xl border space-y-2 transition-all hover:border-slate-600"
                     style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <span
-                        className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded border ${
-                          log.type === 'PREVENTIVO'
-                            ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'
-                            : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                        }`}
-                      >
-                        {log.type}
-                      </span>
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <div className="flex justify-between items-center flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${
+                            log.type === 'PREVENTIVO'
+                              ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                              : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                          }`}
+                        >
+                          {log.type === 'PREVENTIVO' ? '🛠️ PREVENTIVO' : '🛑 CORRECTIVO'}
+                        </span>
+                        <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                          Taller/Responsable: {log.performedBy || 'Interno'}
+                        </span>
+                      </div>
+                      <span className="text-xs font-mono font-bold" style={{ color: 'var(--text-muted)' }}>
                         {new Date(log.date).toLocaleDateString()}
                       </span>
                     </div>
-                    <p className="text-sm mb-2" style={{ color: 'var(--text-primary)' }}>{log.description}</p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      Realizado por: {log.performedBy}
-                    </p>
+                    <p className="text-xs leading-relaxed" style={{ color: 'var(--text-primary)' }}>{log.description}</p>
                   </div>
                 ))}
               </div>
