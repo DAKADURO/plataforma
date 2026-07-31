@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Users, LayoutDashboard, ArrowRight, Search, CheckSquare } from 'lucide-react';
+import { Plus, Users, LayoutDashboard, ArrowRight, Search, CheckSquare, Briefcase, AlertTriangle, CheckCircle2, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import NewClientModal from './NewClientModal';
 import NewProjectModal from './NewProjectModal';
@@ -31,91 +31,159 @@ export default function KanbanBoard({ projects, clients, role }: { projects: Pro
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('Todos');
 
+  // Stats calculation
+  const totalProjects = projects.length;
+  const normalCount = projects.filter(p => p.status === 'NORMAL').length;
+  const riskCount = projects.filter(p => p.status === 'RIESGO').length;
+  const stuckCount = projects.filter(p => p.status === 'ATORADO').length;
+  const avgProgress = totalProjects > 0
+    ? Math.round(projects.reduce((sum, p) => sum + p.progress, 0) / totalProjects)
+    : 0;
+
   const filteredProjects = projects.filter(p => {
     const term = search.toLowerCase();
     const matchesSearch = p.name.toLowerCase().includes(term) || p.client.name.toLowerCase().includes(term);
     if (!matchesSearch) return false;
-    if (activeFilter === 'Recientes') return p.progress < 20;
-    if (activeFilter === 'Riesgo') return p.status === 'RIESGO' || p.status === 'ATORADO';
+    if (activeFilter === 'NORMAL') return p.status === 'NORMAL';
+    if (activeFilter === 'RIESGO') return p.status === 'RIESGO';
+    if (activeFilter === 'ATORADO') return p.status === 'ATORADO';
+    if (activeFilter === 'RiesgoTotal') return p.status === 'RIESGO' || p.status === 'ATORADO';
     return true;
   });
 
   const columns = [
     {
       id: 'NORMAL',
-      title: 'Normal',
-      color: 'text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+      title: 'Normal / En Curso',
+      color: 'text-emerald-500 border-emerald-500/20 bg-emerald-500/10',
       bgColor: 'bg-[var(--success-bg)]',
-      barColor: 'bg-emerald-500',
-      countBg: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+      barColor: 'from-emerald-500 to-teal-400',
+      dotColor: 'bg-emerald-500',
+      countBg: 'bg-emerald-500/15 text-emerald-500',
     },
     {
       id: 'RIESGO',
       title: 'En Riesgo',
-      color: 'text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10',
+      color: 'text-amber-500 border-amber-500/20 bg-amber-500/10',
       bgColor: 'bg-[var(--warning-bg)]',
-      barColor: 'bg-amber-500',
-      countBg: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+      barColor: 'from-amber-500 to-orange-400',
+      dotColor: 'bg-amber-500',
+      countBg: 'bg-amber-500/15 text-amber-500',
     },
     {
       id: 'ATORADO',
       title: 'Atorado',
-      color: 'text-rose-600 dark:text-rose-400 border-rose-500/30 bg-rose-500/10',
+      color: 'text-rose-500 border-rose-500/20 bg-rose-500/10',
       bgColor: 'bg-[var(--danger-bg)]',
-      barColor: 'bg-rose-500',
-      countBg: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
+      barColor: 'from-rose-500 to-red-600',
+      dotColor: 'bg-rose-500',
+      countBg: 'bg-rose-500/15 text-rose-500',
     },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Header and Controls */}
-      <div
-        className="flex flex-col md:flex-row items-center justify-between gap-4 p-5 rounded-2xl border shadow-[var(--shadow-sm)]"
-        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
-      >
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="p-2 rounded-lg" style={{ background: 'var(--accent-subtle)' }}>
-            <LayoutDashboard className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+    <div className="space-y-6 animate-fade-in">
+      {/* Top KPI Metrics Bar */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 rounded-2xl border flex items-center justify-between shadow-sm" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Proyectos Activos</p>
+            <p className="text-2xl font-extrabold mt-1" style={{ color: 'var(--text-primary)' }}>{totalProjects}</p>
           </div>
-          <span className="font-bold text-lg tracking-tight" style={{ color: 'var(--text-primary)' }}>
-            Tablero Kanban
-          </span>
+          <div className="p-3 rounded-xl border" style={{ background: 'var(--accent-subtle)', borderColor: 'transparent' }}>
+            <Briefcase className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+          </div>
         </div>
 
+        <div className="p-4 rounded-2xl border flex items-center justify-between shadow-sm" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>En Curso Normal</p>
+            <p className="text-2xl font-extrabold mt-1 text-emerald-500">{normalCount}</p>
+          </div>
+          <div className="p-3 rounded-xl border" style={{ background: 'rgba(16,185,129,0.1)', borderColor: 'transparent' }}>
+            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl border flex items-center justify-between shadow-sm" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Atención Requerida</p>
+            <p className="text-2xl font-extrabold mt-1" style={{ color: (riskCount + stuckCount) > 0 ? '#f59e0b' : 'var(--text-primary)' }}>
+              {riskCount + stuckCount} {stuckCount > 0 ? `(${stuckCount} atorados)` : ''}
+            </p>
+          </div>
+          <div className="p-3 rounded-xl border" style={{ background: (riskCount + stuckCount) > 0 ? 'rgba(245,158,11,0.1)' : 'var(--bg-surface-alt)', borderColor: 'transparent' }}>
+            <AlertTriangle className="w-5 h-5" style={{ color: (riskCount + stuckCount) > 0 ? '#f59e0b' : 'var(--text-muted)' }} />
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl border flex items-center justify-between shadow-sm" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Avance Promedio</p>
+            <p className="text-2xl font-extrabold mt-1" style={{ color: 'var(--text-primary)' }}>{avgProgress}%</p>
+          </div>
+          <div className="p-3 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+            <TrendingUp className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Header Controls & Toolbar */}
+      <div
+        className="flex flex-col md:flex-row items-center justify-between gap-4 p-5 rounded-2xl border shadow-sm"
+        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+      >
+        <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
+          <div className="p-2.5 rounded-xl border flex items-center justify-center" style={{ background: 'var(--accent-subtle)', borderColor: 'transparent' }}>
+            <LayoutDashboard className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+          </div>
+          <div>
+            <h2 className="font-extrabold text-lg tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              Tablero Kanban de Proyectos
+            </h2>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Monitoreo y avance en tiempo real</p>
+          </div>
+        </div>
+
+        {/* Search */}
         <div className="relative w-full md:max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           <input
             type="text"
             placeholder="Buscar por proyecto o cliente..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full rounded-xl pl-9 pr-4 py-2.5 text-sm outline-none transition-shadow focus:ring-2 focus:ring-[var(--border-focus)]"
+            className="w-full rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none transition-all border"
             style={{
               background: 'var(--bg-surface-alt)',
-              border: '1px solid var(--border)',
+              borderColor: 'var(--border)',
               color: 'var(--text-primary)',
             }}
+            onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+            onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
           />
         </div>
 
+        {/* Action buttons */}
         {role !== 'TECNICO' && (
-          <div className="flex gap-3 w-full md:w-auto shrink-0">
+          <div className="flex gap-2.5 w-full md:w-auto shrink-0">
             <button
               onClick={() => setClientModalOpen(true)}
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border"
               style={{
                 background: 'var(--bg-surface-alt)',
-                border: '1px solid var(--border)',
+                borderColor: 'var(--border)',
                 color: 'var(--text-primary)',
               }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
             >
               <Users className="w-4 h-4" />
               Nuevo Cliente
             </button>
             <button
               onClick={() => setProjectModalOpen(true)}
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all text-white"
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all text-white shadow-md hover:scale-[1.02] active:scale-[0.98]"
               style={{ background: 'var(--accent)' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-hover)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent)')}
@@ -127,40 +195,47 @@ export default function KanbanBoard({ projects, clients, role }: { projects: Pro
         )}
       </div>
 
-      {/* Quick Filters */}
-      <div className="flex flex-wrap gap-2 px-2">
-        {['Todos', 'Recientes', 'Riesgo'].map(f => (
+      {/* Quick Filter Chips */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        <span className="text-xs font-bold uppercase tracking-wider shrink-0 mr-1" style={{ color: 'var(--text-muted)' }}>Filtrar:</span>
+        {[
+          { id: 'Todos', label: `Todos (${projects.length})` },
+          { id: 'NORMAL', label: `🟢 Normal (${normalCount})` },
+          { id: 'RIESGO', label: `⚠️ Riesgo (${riskCount})` },
+          { id: 'ATORADO', label: `🚨 Atorado (${stuckCount})` },
+        ].map(f => (
           <button
-            key={f}
-            onClick={() => setActiveFilter(f)}
-            className="px-4 py-1.5 rounded-full text-xs font-semibold transition-all"
+            key={f.id}
+            onClick={() => setActiveFilter(f.id)}
+            className="px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border shrink-0"
             style={
-              activeFilter === f
-                ? { background: 'var(--accent)', color: '#fff' }
+              activeFilter === f.id
+                ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
                 : {
                     background: 'var(--bg-surface)',
                     color: 'var(--text-secondary)',
-                    border: '1px solid var(--border)',
+                    borderColor: 'var(--border)',
                   }
             }
           >
-            {f}
+            {f.label}
           </button>
         ))}
       </div>
 
-      {/* ── Vista Móvil: lista plana agrupada por estado ── */}
+      {/* ── Vista Móvil ── */}
       <div className="block lg:hidden space-y-6">
         {columns.map(col => {
           const colProjects = filteredProjects.filter(p => p.status === col.id);
           if (colProjects.length === 0) return null;
           return (
-            <div key={col.id}>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border ${col.color}`}>
+            <div key={col.id} className="space-y-3">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border flex items-center gap-2 ${col.color}`}>
+                  <span className={`w-2 h-2 rounded-full ${col.dotColor}`} />
                   {col.title}
                 </h3>
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${col.countBg}`}>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${col.countBg}`}>
                   {colProjects.length}
                 </span>
               </div>
@@ -169,24 +244,27 @@ export default function KanbanBoard({ projects, clients, role }: { projects: Pro
                   const allTasks = project.departments?.flatMap(d => d.tasks) || [];
                   const completedTasks = allTasks.filter(t => t.status === 'COMPLETADA').length;
                   return (
-                    <Link href={`/proyectos/${project.id}`} key={project.id}>
+                    <Link href={`/proyectos/${project.id}`} key={project.id} className="block">
                       <div
-                        className="flex items-center gap-4 p-4 rounded-xl border transition-colors"
+                        className="p-4 rounded-2xl border transition-all space-y-3"
                         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
-                        onMouseEnter={e => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--border-focus)')}
-                        onMouseLeave={e => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--border)')}
                       >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm truncate" style={{ color: 'var(--text-primary)' }}>{project.name}</p>
-                          <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>{project.client.name}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <div className="flex-1 rounded-full h-1.5 overflow-hidden" style={{ background: 'var(--bg-surface-alt)' }}>
-                              <div className={`h-full rounded-full ${col.barColor}`} style={{ width: `${project.progress}%` }} />
-                            </div>
-                            <span className="text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>{project.progress}%</span>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-bold text-base leading-snug" style={{ color: 'var(--text-primary)' }}>{project.name}</p>
+                            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>👤 {project.client.name}</p>
+                          </div>
+                          <ArrowRight className="w-5 h-5 shrink-0 opacity-60" style={{ color: 'var(--accent)' }} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-center text-xs">
+                            <span style={{ color: 'var(--text-muted)' }}>{completedTasks}/{allTasks.length} Tareas</span>
+                            <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{project.progress}%</span>
+                          </div>
+                          <div className="w-full rounded-full h-2 overflow-hidden" style={{ background: 'var(--bg-surface-alt)' }}>
+                            <div className={`h-full rounded-full bg-gradient-to-r ${col.barColor}`} style={{ width: `${project.progress}%` }} />
                           </div>
                         </div>
-                        <ArrowRight className="w-4 h-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
                       </div>
                     </Link>
                   );
@@ -197,12 +275,12 @@ export default function KanbanBoard({ projects, clients, role }: { projects: Pro
         })}
         {filteredProjects.length === 0 && (
           <div className="text-center py-12 border border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-            <p className="text-sm font-medium">Sin proyectos</p>
+            <p className="text-sm font-medium">No se encontraron proyectos.</p>
           </div>
         )}
       </div>
 
-      {/* Kanban Board (desktop) */}
+      {/* ── Kanban Board Desktop ── */}
       <div className="hidden lg:grid grid-cols-3 gap-6 items-start">
         {columns.map(col => {
           const colProjects = filteredProjects.filter(p => p.status === col.id);
@@ -210,24 +288,27 @@ export default function KanbanBoard({ projects, clients, role }: { projects: Pro
           return (
             <div
               key={col.id}
-              className={`flex flex-col rounded-2xl overflow-hidden border ${col.bgColor}`}
-              style={{ borderColor: 'var(--border)' }}
+              className="flex flex-col rounded-2xl overflow-hidden border shadow-sm"
+              style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
             >
               {/* Column Header */}
               <div
-                className="p-5 flex items-center justify-between border-b"
+                className="p-4 flex items-center justify-between border-b"
                 style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
               >
-                <h3 className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border ${col.color}`}>
-                  {col.title}
-                </h3>
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${col.countBg}`}>
+                <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${col.dotColor}`} />
+                  <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>
+                    {col.title}
+                  </h3>
+                </div>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${col.countBg}`}>
                   {colProjects.length}
                 </span>
               </div>
 
               {/* Column Content */}
-              <div className="p-4 space-y-4 h-[calc(100vh-22rem)] min-h-[500px] overflow-y-auto overflow-x-hidden pr-3">
+              <div className="p-4 space-y-4 min-h-[480px] max-h-[calc(100vh-22rem)] overflow-y-auto overflow-x-hidden pr-2">
                 {colProjects.map(project => {
                   const allTasks = project.departments?.flatMap(d => d.tasks) || [];
                   const totalTasks = allTasks.length;
@@ -237,11 +318,12 @@ export default function KanbanBoard({ projects, clients, role }: { projects: Pro
                   return (
                     <Link href={`/proyectos/${project.id}`} key={project.id} className="block group">
                       <div
-                        className="rounded-2xl p-5 transition-all duration-200 ease-out group-hover:-translate-y-0.5 group-hover:shadow-[var(--shadow-md)] border"
-                        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+                        className="rounded-2xl p-5 transition-all duration-200 ease-out group-hover:-translate-y-1 group-hover:shadow-lg border"
+                        style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
                         onMouseEnter={e => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--border-focus)')}
                         onMouseLeave={e => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--border)')}
                       >
+                        {/* Title & Action Icon */}
                         <div className="flex justify-between items-start mb-3 gap-3">
                           <h4
                             className="font-bold text-base leading-snug line-clamp-2 transition-colors group-hover:text-[var(--accent)]"
@@ -250,91 +332,59 @@ export default function KanbanBoard({ projects, clients, role }: { projects: Pro
                             {project.name}
                           </h4>
                           <div
-                            className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity -mr-1 -mt-1 shrink-0"
-                            style={{ background: 'var(--bg-surface-alt)' }}
+                            className="p-1.5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity shrink-0 border"
+                            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
                           >
                             <ArrowRight className="w-4 h-4" style={{ color: 'var(--accent)' }} />
                           </div>
                         </div>
 
-                        {/* Meta Tags */}
-                        <div className="flex flex-wrap gap-2 mb-5">
+                        {/* Client & Task Info */}
+                        <div className="flex flex-wrap gap-2 mb-4">
                           <div
-                            className="inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium border"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium border"
                             style={{
-                              background: 'var(--bg-surface-alt)',
+                              background: 'var(--bg-surface)',
                               borderColor: 'var(--border)',
                               color: 'var(--text-secondary)',
                             }}
                           >
                             <div
-                              className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                              className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-extrabold"
                               style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}
                             >
                               {project.client.name.charAt(0).toUpperCase()}
                             </div>
-                            <span className="truncate max-w-[120px] pr-1">{project.client.name}</span>
+                            <span className="truncate max-w-[120px]">{project.client.name}</span>
                           </div>
 
                           <div
-                            className="relative group/tooltip inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-help border"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium border"
                             style={{
-                              background: 'var(--bg-surface-alt)',
+                              background: 'var(--bg-surface)',
                               borderColor: 'var(--border)',
                               color: 'var(--text-secondary)',
                             }}
                           >
                             <CheckSquare className="w-3.5 h-3.5" style={{ color: 'var(--success)' }} />
                             <span>{completedTasks}/{totalTasks} Tareas</span>
-
-                            <div
-                              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2.5 rounded-lg shadow-[var(--shadow-lg)] opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity z-10 border"
-                              style={{
-                                background: 'var(--bg-surface-alt)',
-                                borderColor: 'var(--border)',
-                                color: 'var(--text-primary)',
-                              }}
-                            >
-                              <p className="font-bold border-b pb-1 mb-1 text-[10px]" style={{ borderColor: 'var(--border)' }}>
-                                Próximas tareas:
-                              </p>
-                              {pendingTasks.slice(0, 3).map((t, i) => (
-                                <p key={i} className="truncate text-[10px]" style={{ color: 'var(--text-secondary)' }}>
-                                  • {t.name || 'Tarea'}
-                                </p>
-                              ))}
-                              {pendingTasks.length === 0 && (
-                                <p className="text-[10px]" style={{ color: 'var(--success)' }}>
-                                  Todo completo ✨
-                                </p>
-                              )}
-                              <div
-                                className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent"
-                                style={{ borderTopColor: 'var(--bg-surface-alt)' }}
-                              />
-                            </div>
                           </div>
                         </div>
 
-                        {/* Progress */}
+                        {/* Progress Bar */}
                         <div className="space-y-1.5">
-                          <div className="flex justify-between items-end">
-                            <span
-                              className="text-[10px] font-bold uppercase tracking-widest"
-                              style={{ color: 'var(--text-muted)' }}
-                            >
-                              Progreso
-                            </span>
-                            <span className="text-sm font-black" style={{ color: 'var(--text-primary)' }}>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>Avance</span>
+                            <span className="font-extrabold text-sm" style={{ color: 'var(--text-primary)' }}>
                               {project.progress}%
                             </span>
                           </div>
                           <div
-                            className="w-full rounded-full h-2 overflow-hidden"
-                            style={{ background: 'var(--bg-surface-alt)' }}
+                            className="w-full rounded-full h-2 overflow-hidden p-0.5 border"
+                            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
                           >
                             <div
-                              className={`h-full rounded-full transition-all duration-700 ease-out ${col.barColor}`}
+                              className={`h-full rounded-full bg-gradient-to-r transition-all duration-700 ease-out ${col.barColor}`}
                               style={{ width: `${project.progress}%` }}
                             />
                           </div>
@@ -346,12 +396,10 @@ export default function KanbanBoard({ projects, clients, role }: { projects: Pro
 
                 {colProjects.length === 0 && (
                   <div
-                    className="flex flex-col items-center justify-center h-40 border-2 border-dashed rounded-2xl"
-                    style={{ borderColor: 'var(--border)' }}
+                    className="flex flex-col items-center justify-center h-36 border-2 border-dashed rounded-2xl"
+                    style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
                   >
-                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
-                      Sin proyectos
-                    </p>
+                    <p className="text-xs font-medium">Sin proyectos en esta columna</p>
                   </div>
                 )}
               </div>
