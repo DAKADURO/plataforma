@@ -38,6 +38,7 @@ type Department = {
   color: string;
   parentId: string | null;
   children: Department[];
+  _count?: { products: number };
 };
 
 export default function DepartmentManager({ departments }: { departments: Department[] }) {
@@ -100,8 +101,13 @@ export default function DepartmentManager({ departments }: { departments: Depart
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`¿Estás seguro de eliminar el departamento "${name}"?`)) return;
+  const handleDelete = async (id: string, name: string, productCount?: number) => {
+    let message = `¿Estás seguro de eliminar el departamento "${name}"?`;
+    if (productCount && productCount > 0) {
+      message += `\n\n⚠️ Hay ${productCount} producto(s) asignado(s) a este departamento. No se puede eliminar hasta reasignarlos.`;
+    }
+    if (!confirm(message)) return;
+
     const res = await deleteDepartment(id);
     if (res.success) {
       refresh();
@@ -151,7 +157,14 @@ export default function DepartmentManager({ departments }: { departments: Depart
                 <div className="p-2 rounded-lg" style={{ background: 'var(--bg-surface)' }}>
                   <IconResolver iconName={dept.icon} color={dept.color} />
                 </div>
-                <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{dept.name}</h3>
+                <div>
+                  <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{dept.name}</h3>
+                  {dept._count && dept._count.products > 0 && (
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      {dept._count.products} producto{dept._count.products !== 1 ? 's' : ''}
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => openNewModal(dept.id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
@@ -160,7 +173,7 @@ export default function DepartmentManager({ departments }: { departments: Depart
                 <button onClick={() => openEditModal(dept)} className="p-1.5 rounded-lg hover:bg-black/10 transition-colors" style={{ color: 'var(--text-secondary)' }}>
                   <Settings className="w-4 h-4" />
                 </button>
-                <button onClick={() => handleDelete(dept.id, dept.name)} className="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors" style={{ color: 'var(--text-secondary)' }}>
+                <button onClick={() => handleDelete(dept.id, dept.name, dept._count?.products)} className="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors" style={{ color: 'var(--text-secondary)' }}>
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
