@@ -16,10 +16,14 @@ export async function getProjects() {
   return await prisma.project.findMany({
     include: {
       client: true,
+      notes: {
+        orderBy: { createdAt: 'desc' },
+        take: 3
+      },
       departments: {
         include: {
           tasks: {
-            select: { status: true }
+            select: { id: true, name: true, status: true, endDate: true }
           }
         }
       }

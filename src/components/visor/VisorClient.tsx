@@ -12,7 +12,10 @@ import {
 import Link from 'next/link';
 
 type ProjectTask = {
+  id?: string;
+  name?: string;
   status: string;
+  endDate?: Date | string | null;
 };
 
 type ProjectDepartment = {
@@ -20,6 +23,13 @@ type ProjectDepartment = {
   name: string;
   progress?: number;
   tasks?: ProjectTask[];
+};
+
+type ProjectNote = {
+  id: string;
+  content: string;
+  author: string;
+  createdAt: Date | string;
 };
 
 type ProjectWithClient = {
@@ -30,6 +40,7 @@ type ProjectWithClient = {
   blockReason: string | null;
   client: { name: string };
   departments?: ProjectDepartment[];
+  notes?: ProjectNote[];
 };
 
 const DEPT_ICONS: Record<string, typeof Wrench> = {
@@ -604,6 +615,39 @@ export default function VisorClient({ initialProjects }: { initialProjects: Proj
                       </div>
                     )}
 
+                    {/* ¿Qué falta? (Tareas Pendientes) */}
+                    {(() => {
+                      const pending = allProjectTasks.filter(t => t.status !== 'COMPLETADA');
+                      if (pending.length === 0) return null;
+                      return (
+                        <div className="mb-4 p-3 rounded-xl bg-blue-500/5 border border-blue-500/10 space-y-1.5">
+                          <span className="text-[10px] font-extrabold text-blue-400 uppercase tracking-widest block">
+                            ⏳ ¿Qué falta? ({pending.length} pendientes)
+                          </span>
+                          <div className="space-y-1">
+                            {pending.slice(0, 2).map((t, idx) => (
+                              <div key={t.id || idx} className="flex items-center justify-between text-[11px]">
+                                <span className="text-slate-300 font-medium truncate">• {t.name || 'Tarea de proyecto'}</span>
+                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0 ml-1">
+                                  {t.status === 'EN_PROGRESO' ? 'En Progreso' : 'Pendiente'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Notas / Comunicados de Planta */}
+                    {project.notes && project.notes.length > 0 && (
+                      <div className="mb-4 p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/10 flex items-start gap-2">
+                        <span className="text-amber-400 text-xs shrink-0 mt-0.5">💬</span>
+                        <p className="text-[11px] font-medium text-amber-200/90 line-clamp-1 italic">
+                          "{project.notes[0].content}"
+                        </p>
+                      </div>
+                    )}
+
                     {/* Footer Progress Bar */}
                     <div className="mt-auto pt-3 border-t border-white/5">
                       <div className="flex justify-between items-baseline mb-2">
@@ -631,6 +675,19 @@ export default function VisorClient({ initialProjects }: { initialProjects: Proj
             </div>
           )}
         </main>
+
+        {/* ── 5. CINTILLO SCROLLING TICKER MARQUEE TV INFERIOR ── */}
+        <footer className="mt-8 pt-4 border-t border-white/10 flex items-center gap-3 overflow-hidden bg-[#080c14] p-3 rounded-2xl">
+          <div className="flex items-center gap-2 bg-blue-600 text-white text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-xl shrink-0">
+            <Radio className="w-3.5 h-3.5 animate-pulse" />
+            En Vivo Planta
+          </div>
+          <div className="overflow-hidden whitespace-nowrap flex-1">
+            <div className="inline-block animate-marquee font-mono text-xs text-slate-300 font-medium">
+              {projects.flatMap(p => (p.notes || []).map(n => `💬 ${p.name}: "${n.content}" (${new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`)).join('   •••   ') || 'Conectado al servidor de planta Memrit Sears. Sincronización automática de tareas y notas en tiempo real.'}
+            </div>
+          </div>
+        </footer>
 
       </div>
     </div>
