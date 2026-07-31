@@ -23,6 +23,7 @@ type Material = { id: string; name: string; category: string; quantity: number; 
 type Client = { id: string; name: string };
 type Proposal = {
   id: string;
+  folio?: string | null;
   title: string;
   description: string | null;
   amount: number;
@@ -55,6 +56,12 @@ const ALL_STATUSES = Object.keys(STATUS_STYLES);
 const fmtCurrency = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n);
 
+const getProposalFolio = (p: { id: string; folio?: string | null; createdAt?: Date | string }) => {
+  if (p.folio && p.folio.trim()) return p.folio.trim();
+  const yr = new Date(p.createdAt || Date.now()).getFullYear();
+  return `PROP-${yr}-${p.id.slice(0, 4).toUpperCase()}`;
+};
+
 /* ─── Component ─────────────────────────────── */
 export default function ProposalManager({
   initialProposals,
@@ -76,7 +83,7 @@ export default function ProposalManager({
   const [modalOpen, setModalOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ clientId: '', title: '', description: '', amount: '', status: 'BORRADOR' });
+  const [form, setForm] = useState({ folio: '', clientId: '', title: '', description: '', amount: '', status: 'BORRADOR' });
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -130,7 +137,7 @@ export default function ProposalManager({
   useEffect(() => { syncSelected(initialProposals); }, [initialProposals]);
 
   const openCreate = () => {
-    setForm({ clientId: clients[0]?.id ?? '', title: '', description: '', amount: '', status: 'BORRADOR' });
+    setForm({ folio: '', clientId: clients[0]?.id ?? '', title: '', description: '', amount: '', status: 'BORRADOR' });
     setEditMode(false);
     setEditingId(null);
     setFormError('');
@@ -138,7 +145,7 @@ export default function ProposalManager({
   };
 
   const openEdit = (p: Proposal) => {
-    setForm({ clientId: p.clientId, title: p.title, description: p.description ?? '', amount: String(p.amount), status: p.status });
+    setForm({ folio: p.folio ?? '', clientId: p.clientId, title: p.title, description: p.description ?? '', amount: String(p.amount), status: p.status });
     setEditMode(true);
     setEditingId(p.id);
     setFormError('');
@@ -150,7 +157,14 @@ export default function ProposalManager({
     if (!form.title || !form.clientId) { setFormError('Título y cliente son obligatorios.'); return; }
     setSubmitting(true);
     setFormError('');
-    const data = { clientId: form.clientId, title: form.title, description: form.description || undefined, amount: parseFloat(form.amount) || 0, status: form.status };
+    const data = {
+      folio: form.folio.trim() || undefined,
+      clientId: form.clientId,
+      title: form.title,
+      description: form.description || undefined,
+      amount: parseFloat(form.amount) || 0,
+      status: form.status,
+    };
     let res;
     if (editMode && editingId) {
       res = await updateProposal(editingId, data);
@@ -259,6 +273,11 @@ export default function ProposalManager({
             <ArrowLeft className="w-4 h-4" /> Volver
           </button>
           <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                {getProposalFolio(selected)}
+              </span>
+            </div>
             <h2 className="text-lg font-extrabold truncate" style={{ color: 'var(--text-primary)' }}>{selected.title}</h2>
             <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{selected.client.name}</p>
           </div>
@@ -318,16 +337,17 @@ export default function ProposalManager({
           {/* ── Info tab ── */}
           {activeTab === 'info' && (
             <div className="space-y-5">
-              {/* Stats grid - 2 cols on mobile */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {/* Stats grid - 4 cols */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  { label: 'Cliente',   value: selected.client.name },
-                  { label: 'Monto',     value: fmtCurrency(selected.amount) },
+                  { label: 'Folio',       value: getProposalFolio(selected) },
+                  { label: 'Cliente',     value: selected.client.name },
+                  { label: 'Monto',       value: fmtCurrency(selected.amount) },
                   { label: 'Actualizado', value: new Date(selected.updatedAt).toLocaleDateString('es-MX') },
                 ].map(({ label, value }) => (
                   <div key={label} className="p-3 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
                     <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{label}</p>
-                    <p className="font-bold text-base truncate" style={{ color: 'var(--text-primary)' }}>{value}</p>
+                    <p className="font-bold text-base truncate font-mono" style={{ color: 'var(--text-primary)' }}>{value}</p>
                   </div>
                 ))}
               </div>
@@ -778,8 +798,13 @@ export default function ProposalManager({
                 onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border)'; el.style.transform = ''; el.style.boxShadow = ''; }}
               >
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <h3 className="font-bold text-base leading-snug line-clamp-2" style={{ color: 'var(--text-primary)' }}>{p.title}</h3>
-                  <span className="shrink-0 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-lg border"
+                  <div className="min-w-0 flex-1">
+                    <span className="inline-block mb-1 px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      {getProposalFolio(p)}
+                    </span>
+                    <h3 className="font-bold text-base leading-snug line-clamp-2" style={{ color: 'var(--text-primary)' }}>{p.title}</h3>
+                  </div>
+                  <span className="shrink-0 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-lg border mt-1"
                     style={{ background: s.bg, color: s.color, borderColor: s.border }}>
                     {s.label}
                   </span>
@@ -824,15 +849,27 @@ export default function ProposalManager({
                   <AlertTriangle className="w-4 h-4 shrink-0" />{formError}
                 </div>
               )}
-              <div>
-                <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Título *</label>
-                <input required type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="Ej. Sistema HVAC Planta Norte"
-                  className="w-full px-3 py-3 rounded-xl outline-none text-sm"
-                  style={{ background: 'var(--bg-surface-alt)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Folio (Opcional)</label>
+                  <input type="text" value={form.folio} onChange={e => setForm(f => ({ ...f, folio: e.target.value }))}
+                    placeholder="Ej. PROP-2026-001"
+                    className="w-full px-3 py-3 rounded-xl outline-none text-sm font-mono"
+                    style={{ background: 'var(--bg-surface-alt)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Título *</label>
+                  <input required type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="Ej. Sistema HVAC Planta Norte"
+                    className="w-full px-3 py-3 rounded-xl outline-none text-sm"
+                    style={{ background: 'var(--bg-surface-alt)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                  />
+                </div>
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Cliente *</label>

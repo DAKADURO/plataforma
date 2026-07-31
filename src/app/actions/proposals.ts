@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation'
 const ACTIVE_ROLES = ['ADMIN', 'GERENTE', 'TECNICO']
 
 type ProposalInput = {
+  folio?: string
   clientId: string
   title: string
   description?: string
@@ -38,7 +39,15 @@ export async function getProposals() {
 export async function createProposal(data: ProposalInput) {
   try {
     await requireRole(['ADMIN', 'GERENTE'])
-    await prisma.proposal.create({ data })
+    const count = await prisma.proposal.count()
+    const year = new Date().getFullYear()
+    const autoFolio = data.folio && data.folio.trim() ? data.folio.trim() : `PROP-${year}-${String(count + 1).padStart(3, '0')}`
+    await prisma.proposal.create({
+      data: {
+        ...data,
+        folio: autoFolio,
+      }
+    })
     revalidatePath('/propuestas')
     return { success: true }
   } catch (error) {

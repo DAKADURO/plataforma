@@ -397,6 +397,7 @@ model MaintenanceLog {
 // =======================
 model Proposal {
   id          String             @id @default(uuid())
+  folio       String?
   clientId    String
   client      Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
   title       String
