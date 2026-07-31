@@ -292,77 +292,195 @@ export default function AlmacenClient({
   }
 
   /* ── Vista de inventario por departamento ───────────────────── */
+  const currentDeptObj = (departmentsDB || []).find(d => d.name === currentDepartment);
+  const subDepartments = currentDeptObj ? (departmentsDB || []).filter(d => d.parentId === currentDeptObj.id) : [];
+  const IconComponent = currentDeptObj?.icon ? AVAILABLE_ICONS[currentDeptObj.icon] || FolderOpen : FolderOpen;
+
+  // Department stats
+  const totalDeptProducts = filteredProducts.length;
+  const lowStockCount = filteredProducts.filter(p => p.stock <= p.minStock).length;
+  const consumiblesCount = filteredProducts.filter(p => p.itemType === 'Consumible').length;
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => router.push('/almacen')}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border"
-          style={{
-            background: 'var(--bg-surface)',
-            borderColor: 'var(--border)',
-            color: 'var(--text-secondary)',
-          }}
-          onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'var(--text-primary)')}
-          onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)')}
-        >
-          <ArrowLeft className="w-4 h-4" /> Volver a Departamentos
-        </button>
-        <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-          Inventario: {currentDepartment}
-        </h2>
+    <div className="space-y-6 animate-fade-in">
+      {/* Top Header Card */}
+      <div
+        className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl border shadow-sm"
+        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+      >
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.push('/almacen')}
+            className="flex items-center justify-center w-10 h-10 rounded-xl transition-all border shrink-0"
+            style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+            title="Volver a Departamentos"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+
+          <div
+            className="p-3 rounded-xl border shrink-0 flex items-center justify-center"
+            style={{ background: currentDeptObj?.color ? `${currentDeptObj.color}18` : 'var(--accent-subtle)', borderColor: 'var(--border)' }}
+          >
+            <IconComponent className="w-7 h-7" style={{ color: currentDeptObj?.color || 'var(--accent)' }} />
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
+                {currentDepartment}
+              </h2>
+              {subDepartments.length > 0 && (
+                <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                  {subDepartments.length} sub-áreas
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              Gestión de inventario y materiales asignados
+            </p>
+          </div>
+        </div>
+
+        {/* Header Action Buttons */}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setScannerOpen(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border"
+            style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+          >
+            <Scan className="w-4 h-4" /> Escanear QR
+          </button>
+          
+          {role !== 'TECNICO' && (
+            <button
+              onClick={() => setProductModalOpen(true)}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-md hover:scale-[1.02] active:scale-[0.98]"
+              style={{ background: 'var(--accent)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-hover)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent)')}
+            >
+              <Plus className="w-4 h-4" /> Nuevo Producto
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* KPI Stats Bar */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-4 rounded-xl border flex items-center justify-between" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Total Productos</p>
+            <p className="text-2xl font-extrabold mt-1" style={{ color: 'var(--text-primary)' }}>{totalDeptProducts}</p>
+          </div>
+          <div className="p-3 rounded-xl border" style={{ background: 'var(--accent-subtle)', borderColor: 'transparent' }}>
+            <Package className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl border flex items-center justify-between" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Alertas de Stock</p>
+            <p className="text-2xl font-extrabold mt-1" style={{ color: lowStockCount > 0 ? 'var(--danger)' : 'var(--success)' }}>
+              {lowStockCount} {lowStockCount > 0 ? 'bajo mín.' : 'OK'}
+            </p>
+          </div>
+          <div className="p-3 rounded-xl border" style={{ background: lowStockCount > 0 ? 'var(--danger-bg)' : 'var(--success-bg)', borderColor: 'transparent' }}>
+            <Trash2 className="w-5 h-5" style={{ color: lowStockCount > 0 ? 'var(--danger)' : 'var(--success)' }} />
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl border flex items-center justify-between" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Consumibles</p>
+            <p className="text-2xl font-extrabold mt-1" style={{ color: 'var(--text-primary)' }}>{consumiblesCount}</p>
+          </div>
+          <div className="p-3 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+            <Wrench className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Sub-Departments Quick Filters (Pills) */}
+      {subDepartments.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <span className="text-xs font-bold uppercase tracking-wider shrink-0 mr-1" style={{ color: 'var(--text-muted)' }}>Sub-áreas:</span>
+          <button
+            onClick={() => setAdvancedFilters(f => ({ ...f, departments: [] }))}
+            className="px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border shrink-0"
+            style={advancedFilters.departments.length === 0
+              ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
+              : { background: 'var(--bg-surface)', color: 'var(--text-secondary)', borderColor: 'var(--border)' }}
+          >
+            Todas ({totalDeptProducts})
+          </button>
+          {subDepartments.map(sub => {
+            const isSelected = advancedFilters.departments.includes(sub.name);
+            const count = products.filter(p => p.department === sub.name).length;
+            return (
+              <button
+                key={sub.id}
+                onClick={() => {
+                  setAdvancedFilters(f => ({
+                    ...f,
+                    departments: isSelected ? f.departments.filter(d => d !== sub.name) : [sub.name]
+                  }));
+                }}
+                className="px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border shrink-0 flex items-center gap-1.5"
+                style={isSelected
+                  ? { background: sub.color || 'var(--accent)', color: '#fff', borderColor: sub.color || 'var(--accent)' }
+                  : { background: 'var(--bg-surface)', color: 'var(--text-secondary)', borderColor: 'var(--border)' }}
+              >
+                <span>└ {sub.name}</span>
+                <span className="opacity-70 text-[10px]">({count})</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Stock Alerts Widget */}
       {!loadingAlerts && alerts.length > 0 && role !== 'TECNICO' && (
         <StockAlertsWidget alerts={alerts} userRole={role} />
       )}
 
-      {/* Header controls */}
+      {/* Search & Filter Toolbar */}
       <div
-        className="flex flex-col gap-4 p-4 rounded-xl border"
+        className="flex flex-col sm:flex-row items-center gap-3 p-4 rounded-2xl border"
         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
       >
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
-          <div className="flex-1 min-w-0">
-            <EnhancedSearchBar
-              value={searchTerm}
-              onChange={setSearchTerm}
-              suggestions={products
-                .filter(p => selectedTags.length === 0 || selectedTags.some(tid => (p.tags ?? []).some((pt: any) => pt.tag.id === tid)))
-                .slice(0, 5)
-                .map(p => ({
-                  type: 'product' as const,
-                  value: p.sku,
-                  label: `${p.sku} - ${p.name}`,
-                }))}
-            />
-          </div>
+        <div className="flex-1 min-w-0 w-full">
+          <EnhancedSearchBar
+            value={searchTerm}
+            onChange={setSearchTerm}
+            suggestions={products
+              .filter(p => selectedTags.length === 0 || selectedTags.some(tid => (p.tags ?? []).some((pt: any) => pt.tag.id === tid)))
+              .slice(0, 5)
+              .map(p => ({
+                type: 'product' as const,
+                value: p.sku,
+                label: `${p.sku} - ${p.name}`,
+              }))}
+          />
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
           <AdvancedFilterPanel
             allCategories={categories}
             filters={advancedFilters}
             onFilterChange={setAdvancedFilters}
           />
-          <button
-            onClick={() => setScannerOpen(true)}
-            className="flex items-center justify-center p-3 rounded-lg text-sm font-semibold transition-all border"
-            style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
-            title="Escanear QR"
-          >
-            <Scan className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2 w-full">
           {tags.length > 0 && (
             <TagFilter tags={tags} selectedTags={selectedTags} onTagsChange={setSelectedTags} onManageTags={() => setTagManagerOpen(true)} />
           )}
           {role !== 'TECNICO' && (
             <button
               onClick={() => setTagManagerOpen(true)}
-              className="px-3 py-2 rounded-lg text-sm font-semibold transition-all border"
+              className="px-3 py-2 rounded-lg text-xs font-semibold transition-all border shrink-0"
               style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
@@ -371,19 +489,6 @@ export default function AlmacenClient({
             </button>
           )}
         </div>
-
-        {role !== 'TECNICO' && (
-          <button
-            onClick={() => setProductModalOpen(true)}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:-translate-y-px active:translate-y-0"
-            style={{ background: 'var(--accent)' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-hover)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent)')}
-          >
-            <Plus className="w-4 h-4" />
-            Nuevo Producto
-          </button>
-        )}
       </div>
 
       {/* Filter chips display */}
