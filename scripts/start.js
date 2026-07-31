@@ -17,14 +17,15 @@ async function start() {
   try {
     console.log('Initializing database...');
 
-    // Try to deploy migrations, but don't fail on P3005 or other expected errors
+    // For Supabase/managed databases, use db push to sync schema
+    // This is more suitable than migrations for existing databases
     try {
-      await runCommand('npx', ['prisma', 'migrate', 'deploy']);
-      console.log('✓ Migrations deployed');
+      await runCommand('npx', ['prisma', 'db', 'push', '--skip-generate']);
+      console.log('✓ Database schema synchronized');
     } catch (error) {
-      // Expected for existing databases: P3005 (schema not empty), migration conflicts, etc.
-      console.log('⚠ Migration error (this may be normal for existing databases)');
-      // Continue anyway - the schema might already exist
+      console.log('⚠ Database sync error - attempting to continue');
+      console.log('   (This may occur if database connection is slow)');
+      // Continue anyway - the schema might already be up to date
     }
 
     console.log('Starting Next.js server...');
