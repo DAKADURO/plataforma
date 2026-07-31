@@ -734,9 +734,10 @@ export default function ProjectDetailClient({ project, role, products = [] }: { 
   const [deptError, setDeptError] = useState('');
   const [addingDept, startAddingDept] = useTransition();
 
-  // Document & Note Management
+  // Document & Note & Activity Management
   const [selectedDocFolder, setSelectedDocFolder] = useState<string>('TODOS');
   const [noteTag, setNoteTag] = useState<string>('💡 General');
+  const [activityFilter, setActivityFilter] = useState<string>('TODOS');
   const [notes, setNotes] = useState<ProjectNote[]>(project.notes || []);
   const [newNote, setNewNote] = useState('');
   const [addingNote, setAddingNote] = useState(false);
@@ -2175,109 +2176,188 @@ export default function ProjectDetailClient({ project, role, products = [] }: { 
         </div>
       )}
 
-      {/* ── TAB 5: ACTIVIDAD Y GESTIÓN DE ESTADO ── */}
+      {/* ── TAB 5: ACTIVIDAD Y GESTIÓN DE ESTADO (GRID EN 2 COLUMNAS) ── */}
       {activeTab === 'ACTIVIDAD' && (
-        <div className="space-y-6">
-          {/* Gestión de Estado */}
-          <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
-            <label className="flex items-center gap-2 text-lg font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
-              <AlertTriangle className="w-5 h-5" style={{ color: 'var(--accent)' }} />
-              Gestión de Estado del Proyecto
-            </label>
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              {[
-                { id: 'NORMAL',  label: 'Normal',   Icon: CheckCircle2, activeStyle: { borderColor: 'var(--success)', background: 'var(--success-bg)', color: 'var(--success)' } },
-                { id: 'RIESGO',  label: 'En Riesgo',Icon: AlertTriangle, activeStyle: { borderColor: 'var(--warning)', background: 'var(--warning-bg)', color: 'var(--warning)' } },
-                { id: 'ATORADO', label: 'Atorado',  Icon: XCircle,      activeStyle: { borderColor: 'var(--danger)',  background: 'var(--danger-bg)',  color: 'var(--danger)' } },
-              ].map(({ id, label, Icon, activeStyle }) => (
-                <button
-                  key={id}
-                  onClick={() => handleSelectStatus(id)}
-                  disabled={role === 'TECNICO'}
-                  className="flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all disabled:cursor-not-allowed disabled:opacity-50"
-                  style={
-                    status === id
-                      ? activeStyle
-                      : { borderColor: 'var(--border)', background: 'var(--bg-surface-alt)', color: 'var(--text-muted)' }
-                  }
-                >
-                  <Icon className="w-6 h-6 mb-2" />
-                  <span className="text-xs font-bold">{label}</span>
-                </button>
-              ))}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          {/* COLUMNA IZQUIERDA: CONTROL DE ESTADO OPERATIVO & DIAGNÓSTICO (1 Col en Desktop) */}
+          <div className="lg:col-span-1 space-y-6">
+            <div className="rounded-2xl border p-6" style={sectionStyle}>
+              <label className="flex items-center gap-2 text-base font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+                <AlertTriangle className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+                Estado Operativo
+              </label>
+              <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+                Selecciona el estado operativo para notificar al equipo y actualizar el centro de mando:
+              </p>
+
+              <div className="space-y-3 mb-6">
+                {[
+                  { id: 'NORMAL', label: '🟢 Normal', desc: 'Operando a tiempo y sin bloqueos', activeStyle: { borderColor: 'var(--success)', background: 'var(--success-bg)', color: 'var(--success)' } },
+                  { id: 'RIESGO', label: '⚠️ En Riesgo', desc: 'Retrasos potenciales o falta de suministro', activeStyle: { borderColor: 'var(--warning)', background: 'var(--warning-bg)', color: 'var(--warning)' } },
+                  { id: 'ATORADO', label: '🛑 Atorado', desc: 'Trabajo detenido por causa mayor', activeStyle: { borderColor: 'var(--danger)', background: 'var(--danger-bg)', color: 'var(--danger)' } },
+                ].map(({ id, label, desc, activeStyle }) => (
+                  <button
+                    key={id}
+                    onClick={() => handleSelectStatus(id)}
+                    disabled={role === 'TECNICO'}
+                    className="w-full flex items-center justify-between p-3.5 rounded-xl border-2 transition-all text-left disabled:cursor-not-allowed disabled:opacity-50"
+                    style={
+                      status === id
+                        ? activeStyle
+                        : { borderColor: 'var(--border)', background: 'var(--bg-surface-alt)', color: 'var(--text-muted)' }
+                    }
+                  >
+                    <div>
+                      <span className="text-xs font-bold block mb-0.5">{label}</span>
+                      <span className="text-[10px] opacity-80">{desc}</span>
+                    </div>
+                    {status === id && <CheckCircle2 className="w-4 h-4 shrink-0" />}
+                  </button>
+                ))}
+              </div>
+
+              {blockReason && (
+                <div className="p-3.5 rounded-xl border mb-4" style={{ background: 'var(--bg-base)', borderColor: 'var(--border)' }}>
+                  <label className="block text-[10px] font-bold mb-1 uppercase tracking-widest text-amber-400">
+                    Causa / Motivo del Bloqueo:
+                  </label>
+                  <p className="text-xs font-medium leading-relaxed" style={{ color: 'var(--text-primary)' }}>{blockReason}</p>
+                </div>
+              )}
+
+              {saved && <p className="text-xs font-bold text-emerald-500 mb-2">¡Estado actualizado con éxito!</p>}
             </div>
 
-            {blockReason && (
-              <div className="p-4 rounded-xl border mb-6" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
-                <label className="block text-[10px] font-bold mb-1 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                  Motivo / Detalle de Causa
-                </label>
-                <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{blockReason}</p>
+            {/* Tarjeta de Resumen de Diagnóstico */}
+            <div className="rounded-2xl border p-6 space-y-4" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                <Activity className="w-4 h-4 text-emerald-400" />
+                Diagnóstico Rápido
+              </h3>
+              <div className="space-y-3 text-xs">
+                <div className="flex items-center justify-between p-2.5 rounded-lg border bg-black/20" style={{ borderColor: 'var(--border)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Salud Operativa:</span>
+                  <span className="font-bold uppercase text-[10px] px-2 py-0.5 rounded border" style={
+                    status === 'NORMAL' ? { background: 'var(--success-bg)', color: 'var(--success)', borderColor: 'var(--success)' }
+                    : status === 'RIESGO' ? { background: 'var(--warning-bg)', color: 'var(--warning)', borderColor: 'var(--warning)' }
+                    : { background: 'var(--danger-bg)', color: 'var(--danger)', borderColor: 'var(--danger)' }
+                  }>
+                    {status}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-2.5 rounded-lg border bg-black/20" style={{ borderColor: 'var(--border)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Total Eventos Auditados:</span>
+                  <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{activityFeed.length}</span>
+                </div>
               </div>
-            )}
-
-            {saved && <p className="text-xs font-bold text-emerald-500 mb-2">¡Estado actualizado con éxito!</p>}
+            </div>
           </div>
 
-          {/* Audit Trail */}
-          <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-                <Activity className="w-6 h-6" style={{ color: 'var(--accent)' }} />
-                Bitácora de Eventos y Cambios (Audit Trail)
-              </h2>
-            </div>
+          {/* COLUMNA DERECHA: LÍNEA DE TIEMPO Y AUDITORÍA (2 Cols en Desktop) */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
+              <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+                <div>
+                  <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
+                    <Activity className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+                    Bitácora de Eventos (Audit Trail)
+                  </h2>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                    Historial cronológico completo de cambios de estado, documentos y modificaciones.
+                  </p>
+                </div>
+              </div>
 
-            {activityFeed.length === 0 ? (
-              <div className="p-12 text-center text-sm border border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-                No hay eventos o actividad registrados en este proyecto aún.
+              {/* Activity Filter Chips */}
+              <div className="flex items-center gap-2 overflow-x-auto mb-6 pb-2 scrollbar-hide border-b" style={{ borderColor: 'var(--border)' }}>
+                {[
+                  { id: 'TODOS', label: `Todos (${activityFeed.length})` },
+                  { id: 'STATUS_CHANGE', label: '⚡ Estado' },
+                  { id: 'DOCUMENT', label: '📁 Documentos' },
+                  { id: 'FINANCIAL', label: '💰 Financiero' },
+                ].map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => setActivityFilter(f.id)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap border"
+                    style={
+                      activityFilter === f.id
+                        ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
+                        : { background: 'var(--bg-surface-alt)', color: 'var(--text-muted)', borderColor: 'var(--border)' }
+                    }
+                  >
+                    {f.label}
+                  </button>
+                ))}
               </div>
-            ) : (
-              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                {activityFeed.map(item => {
-                  const isRisk = item.title.includes('Atorado') || item.title.includes('Riesgo');
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-4 rounded-xl border flex gap-4 transition-all"
-                      style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
-                    >
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 mt-1"
-                        style={
-                          isRisk
-                            ? { background: 'var(--danger-bg)', color: 'var(--danger)' }
-                            : { background: 'var(--accent-subtle)', color: 'var(--accent)' }
-                        }
-                      >
-                        {isRisk ? <ShieldAlert className="w-5 h-5" /> : <Activity className="w-5 h-5" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
-                          <h4 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{item.title}</h4>
-                          <span className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>
-                            {formatDateOnly(item.date)} {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
+
+              {/* Timeline Container */}
+              {activityFeed.length === 0 ? (
+                <div className="text-center p-10 border-2 border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-alt)' }}>
+                  <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}>
+                    <Activity className="w-7 h-7" />
+                  </div>
+                  <h3 className="text-sm font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
+                    Línea de Tiempo Operativa Inactiva
+                  </h3>
+                  <p className="text-xs max-w-md mx-auto" style={{ color: 'var(--text-muted)' }}>
+                    Todas las acciones relevantes (cambios de estado, notas, carga de planos y ajustes de presupuesto) quedarán registradas cronológicamente aquí.
+                  </p>
+                </div>
+              ) : (
+                <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-700">
+                  {activityFeed
+                    .filter(item => {
+                      if (activityFilter === 'TODOS') return true;
+                      if (activityFilter === 'STATUS_CHANGE') return item.type === 'STATUS_EVENT' || item.title.includes('estado');
+                      if (activityFilter === 'DOCUMENT') return item.title.includes('Documento') || item.title.includes('documento');
+                      if (activityFilter === 'FINANCIAL') return item.title.includes('Presupuesto') || item.title.includes('Monto');
+                      return true;
+                    })
+                    .map(item => {
+                      const isRisk = item.title.includes('Atorado') || item.title.includes('Riesgo');
+                      return (
+                        <div key={item.id} className="relative group">
+                          {/* Timeline node */}
+                          <div
+                            className="absolute -left-6 top-1.5 w-5 h-5 rounded-full border-2 flex items-center justify-center z-10 transition-transform group-hover:scale-125"
+                            style={
+                              isRisk
+                                ? { background: 'var(--danger)', borderColor: '#fff' }
+                                : { background: 'var(--accent)', borderColor: '#fff' }
+                            }
+                          >
+                            <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                          </div>
+
+                          <div
+                            className="p-4 rounded-xl border transition-all"
+                            style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
+                          >
+                            <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                              <h4 className="text-xs font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                {isRisk ? <ShieldAlert className="w-4 h-4 text-red-400" /> : <Activity className="w-4 h-4 text-emerald-400" />}
+                                {item.title}
+                              </h4>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded border" style={{ background: 'var(--bg-base)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                                {formatDateOnly(item.date)} {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            {item.details && (
+                              <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                                {item.details}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-2 text-[10px] mt-2 pt-2 border-t" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                              <span>Registrado por: <strong style={{ color: 'var(--text-secondary)' }}>{item.user}</strong></span>
+                            </div>
+                          </div>
                         </div>
-                        {item.category && (
-                          <span className="inline-block px-2.5 py-0.5 mb-2 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-amber-500/10 text-amber-500 border-amber-500/20">
-                            Causa: {item.category}
-                          </span>
-                        )}
-                        {item.details && (
-                          <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                            {item.details}
-                          </p>
-                        )}
-                        <div className="mt-2 text-[10px] flex items-center gap-1 font-medium" style={{ color: 'var(--text-muted)' }}>
-                          <Users className="w-3 h-3" /> Registrado por {item.user}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                      );
+                    })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
