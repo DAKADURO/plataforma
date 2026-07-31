@@ -660,8 +660,8 @@ export default function ProjectDetailClient({ project, role, products = [] }: { 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Phase 7: Risk Management & Status Change Modal
-  const [activeTab, setActiveTab] = useState<'PLAN' | 'ACTIVIDAD'>('PLAN');
+  // Main View Navigation Tabs
+  const [activeTab, setActiveTab] = useState<'PLAN' | 'FINANCIERO' | 'HORAS_EQUIPOS' | 'DOCUMENTOS' | 'ACTIVIDAD'>('PLAN');
   const [statusCategory, setStatusCategory] = useState('Falta de suministro');
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
@@ -1099,289 +1099,389 @@ export default function ProjectDetailClient({ project, role, products = [] }: { 
         </div>
       </div>
 
-      {/* ── Main View Tabs (General / Operación vs Actividad) ── */}
-      <div className="flex gap-2 border-b pb-2" style={{ borderColor: 'var(--border)' }}>
-        <button
-          onClick={() => setActiveTab('PLAN')}
-          className="px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 border"
-          style={activeTab === 'PLAN'
-            ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
-            : { background: 'var(--bg-surface-alt)', color: 'var(--text-secondary)', borderColor: 'var(--border)' }
-          }
-        >
-          <ListChecks className="w-4 h-4" />
-          Plan de Trabajo y Operación
-        </button>
-        <button
-          onClick={() => setActiveTab('ACTIVIDAD')}
-          className="px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 border"
-          style={activeTab === 'ACTIVIDAD'
-            ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
-            : { background: 'var(--bg-surface-alt)', color: 'var(--text-secondary)', borderColor: 'var(--border)' }
-          }
-        >
-          <Activity className="w-4 h-4" />
-          Actividad y Bitácora de Riesgos ({activityFeed.length})
-        </button>
+      {/* ── Main View Tabs ── */}
+      <div className="flex items-center gap-2 border-b overflow-x-auto scrollbar-hide pb-1" style={{ borderColor: 'var(--border)' }}>
+        {[
+          { id: 'PLAN',          label: 'Plan de Trabajo',           icon: ListChecks },
+          { id: 'FINANCIERO',     label: 'Financiero & Cobros',        icon: Receipt },
+          { id: 'HORAS_EQUIPOS', label: 'Horas & Equipos',           icon: Clock },
+          { id: 'DOCUMENTOS',     label: `Documentos & Notas (${(project.documents?.length || 0) + notes.length})`, icon: FileText },
+          { id: 'ACTIVIDAD',      label: `Actividad (${activityFeed.length})`, icon: Activity },
+        ].map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id as any)}
+            className="px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 whitespace-nowrap shrink-0 border"
+            style={activeTab === id
+              ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
+              : { background: 'var(--bg-surface-alt)', color: 'var(--text-secondary)', borderColor: 'var(--border)' }
+            }
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+          </button>
+        ))}
       </div>
 
-      {activeTab === 'ACTIVIDAD' ? (
-        /* ── ACTIVIDAD FEED (Fase 7) ── */
+      {/* ── TAB 1: PLAN DE TRABAJO ── */}
+      {activeTab === 'PLAN' && (
         <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-              <Activity className="w-6 h-6" style={{ color: 'var(--accent)' }} />
-              Bitácora de Eventos y Cambios (Audit Trail)
+              <ListChecks className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+              Plan de Trabajo y Tareas
             </h2>
-          </div>
-
-          {activityFeed.length === 0 ? (
-            <div className="p-12 text-center text-sm border border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-              No hay eventos o actividad registrados en este proyecto aún.
-            </div>
-          ) : (
-            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-              {activityFeed.map(item => {
-                const isRisk = item.title.includes('Atorado') || item.title.includes('Riesgo');
-                return (
-                  <div
-                    key={item.id}
-                    className="p-4 rounded-xl border flex gap-4 transition-all"
-                    style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
-                  >
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 mt-1"
-                      style={
-                        isRisk
-                          ? { background: 'var(--danger-bg)', color: 'var(--danger)' }
-                          : { background: 'var(--accent-subtle)', color: 'var(--accent)' }
-                      }
-                    >
-                      {isRisk ? <ShieldAlert className="w-5 h-5" /> : <Activity className="w-5 h-5" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
-                        <h4 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{item.title}</h4>
-                        <span className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>
-                          {formatDateOnly(item.date)} {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      {item.category && (
-                        <span className="inline-block px-2.5 py-0.5 mb-2 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-amber-500/10 text-amber-500 border-amber-500/20">
-                          Causa: {item.category}
-                        </span>
-                      )}
-                      {item.details && (
-                        <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                          {item.details}
-                        </p>
-                      )}
-                      <div className="mt-2 text-[10px] flex items-center gap-1 font-medium" style={{ color: 'var(--text-muted)' }}>
-                        <Users className="w-3 h-3" /> Registrado por {item.user}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ) : (
-        /* ── PLAN Y OPERACIÓN ── */
-        <>
-          {/* ── Secondary Panels ── */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Estado Operativo */}
-            <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
-              <label className="flex items-center gap-2 text-lg font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
-                <AlertTriangle className="w-5 h-5" style={{ color: 'var(--accent)' }} />
-                Gestión de Estado
-              </label>
-              <div className="grid grid-cols-3 gap-3 mb-6">
-                {[
-                  { id: 'NORMAL',  label: 'Normal',   Icon: CheckCircle2, activeStyle: { borderColor: 'var(--success)', background: 'var(--success-bg)', color: 'var(--success)' } },
-                  { id: 'RIESGO',  label: 'En Riesgo',Icon: AlertTriangle, activeStyle: { borderColor: 'var(--warning)', background: 'var(--warning-bg)', color: 'var(--warning)' } },
-                  { id: 'ATORADO', label: 'Atorado',  Icon: XCircle,      activeStyle: { borderColor: 'var(--danger)',  background: 'var(--danger-bg)',  color: 'var(--danger)' } },
-                ].map(({ id, label, Icon, activeStyle }) => (
+            <div className="flex items-center gap-4">
+              <span className="text-sm hidden sm:inline-block" style={{ color: 'var(--text-muted)' }}>
+                {tasks.length} {tasks.length === 1 ? 'tarea' : 'tareas'}
+              </span>
+              <div className="flex p-1 rounded-lg border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                {(['LISTA', 'GANTT'] as const).map(mode => (
                   <button
-                    key={id}
-                    onClick={() => handleSelectStatus(id)}
-                    disabled={role === 'TECNICO'}
-                    className="flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all disabled:cursor-not-allowed disabled:opacity-50"
-                    style={
-                      status === id
-                        ? activeStyle
-                        : { borderColor: 'var(--border)', background: 'var(--bg-surface-alt)', color: 'var(--text-muted)' }
+                    key={mode}
+                    onClick={() => setViewMode(mode)}
+                    className="px-3 py-1 text-xs font-bold rounded-md transition-colors"
+                    style={viewMode === mode
+                      ? { background: 'var(--accent)', color: '#fff' }
+                      : { color: 'var(--text-muted)' }
                     }
                   >
-                    <Icon className="w-6 h-6 mb-2" />
-                    <span className="text-xs font-bold">{label}</span>
+                    {mode === 'LISTA' ? 'Lista' : 'Cronograma'}
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
 
-              {blockReason && (
-                <div className="p-4 rounded-xl border mb-6" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
-                  <label className="block text-[10px] font-bold mb-1 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                    Motivo / Detalle de Causa
-                  </label>
-                  <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{blockReason}</p>
+          {/* Department Tabs */}
+          {departments.length > 0 && (
+            <div className="flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide">
+              {departments.map(dept => (
+                <button
+                  key={dept.id}
+                  onClick={() => setActiveDeptId(dept.id)}
+                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap border shrink-0"
+                  style={
+                    activeDeptId === dept.id
+                      ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
+                      : { background: 'var(--bg-surface-alt)', color: 'var(--text-secondary)', borderColor: 'var(--border)' }
+                  }
+                >
+                  {dept.name}
+                  <span
+                    className="px-2 py-0.5 rounded-md text-[10px]"
+                    style={{ background: 'rgba(0,0,0,0.2)' }}
+                  >
+                    {dept.progress}%
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {viewMode === 'LISTA' ? (
+            <>
+              {/* Add Task Row */}
+              {role !== 'TECNICO' && (
+                <div
+                  className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 mb-6 p-4 rounded-xl border"
+                  style={{ background: 'var(--accent-subtle)', borderColor: 'var(--accent)' }}
+                >
+                  <div>
+                    <label className="block text-[10px] font-bold mb-1 uppercase" style={{ color: 'var(--text-muted)' }}>Nombre de la tarea</label>
+                    <input
+                      type="text"
+                      placeholder="ej. Instalación eléctrica panel A"
+                      value={newTaskName}
+                      onChange={e => setNewTaskName(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleAddTask()}
+                      style={inputFieldStyle}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold mb-1 uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                      <Link2 className="w-3 h-3" /> Predecesora
+                    </label>
+                    <select
+                      value={newTaskPredecessor}
+                      onChange={e => setNewTaskPredecessor(e.target.value)}
+                      style={inputFieldStyle}
+                    >
+                      <option value="">(Ninguna)</option>
+                      {allProjectTasks.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold mb-1 uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                      <Calendar className="w-3 h-3" /> Inicio
+                    </label>
+                    <input type="date" value={newTaskStart} onChange={e => setNewTaskStart(e.target.value)} style={inputFieldStyle}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold mb-1 uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                      <Calendar className="w-3 h-3" /> Fin estimado
+                    </label>
+                    <input type="date" value={newTaskEnd} onChange={e => setNewTaskEnd(e.target.value)} style={inputFieldStyle}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')} />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      onClick={handleAddTask}
+                      disabled={!newTaskName.trim() || addingTask}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ background: 'var(--accent)' }}
+                    >
+                      <Plus className="w-4 h-4" />
+                      Agregar
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {saved && <p className="text-xs font-bold text-emerald-500 mb-2">¡Estado actualizado con éxito!</p>}
+              {/* Task List */}
+              {tasks.length === 0 ? (
+                <div className="text-center p-12 border-2 border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                  <ListChecks className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">Sin tareas aún.</p>
+                  <p className="text-sm mt-1 opacity-70">Agrega la primera tarea del plan de trabajo.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {tasks.map(task => (
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      projectId={project.id}
+                      departmentId={activeDeptId}
+                      role={role}
+                      products={products}
+                      allProjectTasks={allProjectTasks}
+                      onOptimisticUpdate={handleOptimisticUpdate}
+                      onOptimisticDelete={handleOptimisticDelete}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            /* ── GANTT VIEW ── */
+            <div className="relative overflow-x-auto pb-4">
+              {tasks.filter(t => t.startDate && t.endDate).length === 0 ? (
+                <div className="text-center p-12 border border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                  <Calendar className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">No hay tareas con fechas asignadas.</p>
+                  <p className="text-xs mt-1 opacity-70">Regresa a la vista de Lista para establecer fechas.</p>
+                </div>
+              ) : (
+                <div className="relative min-w-[600px] mt-4 space-y-3">
+                  {(() => {
+                    const tasksWithDates = tasks.filter(t => t.startDate && t.endDate);
+                    const minDate = new Date(Math.min(...tasksWithDates.map(t => new Date(t.startDate!).getTime())));
+                    const maxDate = new Date(Math.max(...tasksWithDates.map(t => new Date(t.endDate!).getTime())));
+                    const totalDuration = Math.max(1, maxDate.getTime() - minDate.getTime());
+                    const now = new Date();
 
-              <div className="pt-6 mt-4 border-t text-center" style={{ borderColor: 'var(--border)' }}>
-                <Link
-                  href="/almacen"
-                  className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-colors"
-                  style={{ background: 'var(--bg-surface-alt)', color: 'var(--text-muted)' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-                >
-                  Ir al Almacén <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
+                    const taskPositions = tasksWithDates.map((t, idx) => {
+                      const start = new Date(t.startDate!);
+                      const end = new Date(t.endDate!);
+                      const leftOffset = ((start.getTime() - minDate.getTime()) / totalDuration) * 100;
+                      const width = ((end.getTime() - start.getTime()) / totalDuration) * 100;
+                      const predecessor = t.dependsOnTask || allProjectTasks.find(pt => pt.id === t.dependsOnTaskId);
+                      const isOverdue = end < now && t.progress < 100;
+                      const isBlocked = predecessor ? predecessor.progress < 100 : false;
+                      return { task: t, idx, leftOffset, width, predecessor, isOverdue, isBlocked };
+                    });
+
+                    return (
+                      <>
+                        <svg className="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible">
+                          {taskPositions.map(tp => {
+                            if (!tp.task.dependsOnTaskId) return null;
+                            const predPos = taskPositions.find(p => p.task.id === tp.task.dependsOnTaskId);
+                            if (!predPos) return null;
+
+                            const x1 = Math.min(98, Math.max(1, predPos.leftOffset + predPos.width));
+                            const y1 = predPos.idx * 60 + 24;
+                            const x2 = Math.min(98, Math.max(1, tp.leftOffset));
+                            const y2 = tp.idx * 60 + 24;
+
+                            return (
+                              <path
+                                key={`svg-conn-${tp.task.id}`}
+                                d={`M ${x1}% ${y1} C ${(x1 + x2) / 2}% ${y1}, ${(x1 + x2) / 2}% ${y2}, ${x2}% ${y2}`}
+                                stroke={tp.isBlocked ? 'var(--warning)' : 'var(--accent)'}
+                                strokeWidth="2"
+                                strokeDasharray={tp.isBlocked ? '4 3' : undefined}
+                                fill="none"
+                              />
+                            );
+                          })}
+                        </svg>
+
+                        {taskPositions.map(({ task, leftOffset, width, predecessor, isOverdue, isBlocked }) => {
+                          const start = new Date(task.startDate!);
+                          const end = new Date(task.endDate!);
+                          const isDone = task.status === 'COMPLETADA';
+                          const isInProgress = task.status === 'EN_PROGRESO';
+
+                          const borderStyle = isOverdue
+                            ? 'border-red-500 border-l-4'
+                            : isBlocked
+                              ? 'border-amber-500 border-l-4'
+                              : isDone
+                                ? 'border-emerald-500 border-l-4'
+                                : isInProgress
+                                  ? 'border-amber-500 border-l-4'
+                                  : 'border-[var(--accent)] border-l-4';
+
+                          return (
+                            <div
+                              key={task.id}
+                              className={`relative h-12 rounded-xl overflow-hidden flex items-center group border ${borderStyle}`}
+                              style={{ background: isOverdue ? 'var(--danger-bg)' : 'var(--bg-surface-alt)', borderColor: isOverdue ? 'var(--danger)' : 'var(--border)' }}
+                            >
+                              <div
+                                className={`absolute h-full transition-all duration-500 ${
+                                  isDone ? 'bg-emerald-500/20' : isInProgress ? 'bg-amber-500/20' : ''
+                                }`}
+                                style={{
+                                  left: `${Math.max(0, leftOffset)}%`,
+                                  width: `${Math.max(2, width)}%`,
+                                  background: isDone ? undefined : isInProgress ? undefined : 'var(--accent-subtle)'
+                                }}
+                              >
+                                <div
+                                  className={`h-full opacity-30 ${isDone ? 'bg-emerald-500' : isInProgress ? 'bg-amber-500' : ''}`}
+                                  style={!isDone && !isInProgress ? { width: `${task.progress}%`, background: isOverdue ? 'var(--danger)' : 'var(--accent)' } : { width: `${task.progress}%` }}
+                                />
+                              </div>
+                              <div className="relative z-10 px-4 flex justify-between w-full pointer-events-none">
+                                <div className="flex items-center gap-2 truncate max-w-[55%]">
+                                  {isBlocked && <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                                  {isOverdue && <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
+                                  <span className="text-xs font-bold truncate" style={{ color: isOverdue ? 'var(--danger)' : 'var(--text-primary)' }}>
+                                    {task.name}
+                                  </span>
+                                  {predecessor && (
+                                    <span className="text-[9px] font-normal opacity-70 truncate">
+                                      (predecesora: {predecessor.name})
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded opacity-50 group-hover:opacity-100 transition-opacity" style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}>
+                                  {formatDateOnly(start)} - {formatDateOnly(end)} ({task.progress}%)
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest pt-2 px-2 border-t" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
+                          <span>Inicio ({formatDateOnly(minDate)})</span>
+                          <span>Fin Estimado ({formatDateOnly(maxDate)})</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
+          )}
+        </div>
+      )}
 
-            {/* Control Financiero */}
-            <div className="rounded-2xl border p-6 md:p-8 flex flex-col" style={sectionStyle}>
-              <h3 className="text-lg font-bold flex items-center gap-3 mb-6" style={{ color: 'var(--text-primary)' }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--accent)' }}><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
-                Control Financiero
-              </h3>
+      {/* ── TAB 2: FINANCIERO Y COBROS ── */}
+      {activeTab === 'FINANCIERO' && (
+        <div className="space-y-6">
+          {/* Control Financiero */}
+          <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
+            <h3 className="text-xl font-bold flex items-center gap-3 mb-6" style={{ color: 'var(--text-primary)' }}>
+              <Receipt className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+              Control Financiero y Presupuesto
+            </h3>
 
-              <div className="flex-1 space-y-4">
-                <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Presupuesto Asignado</span>
-                    {role !== 'TECNICO' && (
-                      <button onClick={() => setIsEditingBudget(!isEditingBudget)} className="text-[10px] font-bold transition-colors" style={{ color: 'var(--accent)' }}>
-                        {isEditingBudget ? 'Cerrar' : 'Editar'}
-                      </button>
-                    )}
-                  </div>
-                  {isEditingBudget ? (
-                    <div className="flex gap-2 mt-2">
-                      <input
-                        type="number"
-                        value={budget}
-                        onChange={e => setBudget(Number(e.target.value))}
-                        style={inputFieldStyle}
-                        onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-                        onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-                      />
-                      <button
-                        onClick={handleSaveBudget}
-                        className="px-3 py-2 rounded-lg text-sm font-bold text-white"
-                        style={{ background: 'var(--accent)' }}
-                      >
-                        OK
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>${budget.toLocaleString()}</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Presupuesto Asignado</span>
+                  {role !== 'TECNICO' && (
+                    <button onClick={() => setIsEditingBudget(!isEditingBudget)} className="text-[10px] font-bold transition-colors" style={{ color: 'var(--accent)' }}>
+                      {isEditingBudget ? 'Cerrar' : 'Editar'}
+                    </button>
                   )}
                 </div>
+                {isEditingBudget ? (
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      type="number"
+                      value={budget}
+                      onChange={e => setBudget(Number(e.target.value))}
+                      style={inputFieldStyle}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                    />
+                    <button
+                      onClick={handleSaveBudget}
+                      className="px-3 py-2 rounded-lg text-sm font-bold text-white"
+                      style={{ background: 'var(--accent)' }}
+                    >
+                      OK
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>${budget.toLocaleString()}</div>
+                )}
+              </div>
 
+              <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>Costo Materiales (Real)</span>
+                <div className="text-2xl font-black" style={{ color: 'var(--text-secondary)' }}>${materialCost.toLocaleString()}</div>
+              </div>
+
+              <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>Costo Máquinas</span>
+                <div className="text-2xl font-black" style={{ color: 'var(--text-secondary)' }}>${machineCost.toLocaleString()}</div>
+              </div>
+
+              {canSeeMoney && (
                 <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
-                  <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>Costo Materiales (Real)</span>
-                  <div className="text-2xl font-black" style={{ color: 'var(--text-secondary)' }}>${materialCost.toLocaleString()}</div>
-                </div>
-
-                {machineCost > 0 && (
-                  <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
-                    <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>Costo Máquinas</span>
-                    <div className="text-2xl font-black" style={{ color: 'var(--text-secondary)' }}>${machineCost.toLocaleString()}</div>
-                  </div>
-                )}
-
-                {canSeeMoney && (
-                  <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
-                    <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>
-                      Costo Mano de Obra ({totalHours.toLocaleString()} h)
-                    </span>
-                    <div className="text-2xl font-black" style={{ color: 'var(--text-secondary)' }}>${laborCost.toLocaleString()}</div>
-                  </div>
-                )}
-
-                <div
-                  className="p-4 rounded-xl border"
-                  style={isOverBudget
-                    ? { background: 'var(--danger-bg)', borderColor: 'var(--danger)' }
-                    : { background: 'var(--success-bg)', borderColor: 'var(--success)' }
-                  }
-                >
-                  <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: isOverBudget ? 'var(--danger)' : 'var(--success)' }}>
-                    {isOverBudget ? 'Déficit (Sobregiro)' : 'Presupuesto Restante'}
+                  <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: 'var(--text-muted)' }}>
+                    Costo Mano de Obra ({totalHours.toLocaleString()} h)
                   </span>
-                  <div className="text-2xl font-black" style={{ color: isOverBudget ? 'var(--danger)' : 'var(--success)' }}>
-                    ${Math.abs(remainingBudget).toLocaleString()}
-                  </div>
+                  <div className="text-2xl font-black" style={{ color: 'var(--text-secondary)' }}>${laborCost.toLocaleString()}</div>
+                </div>
+              )}
+
+              <div
+                className="p-4 rounded-xl border"
+                style={isOverBudget
+                  ? { background: 'var(--danger-bg)', borderColor: 'var(--danger)' }
+                  : { background: 'var(--success-bg)', borderColor: 'var(--success)' }
+                }
+              >
+                <span className="text-[10px] font-bold uppercase tracking-widest block mb-1" style={{ color: isOverBudget ? 'var(--danger)' : 'var(--success)' }}>
+                  {isOverBudget ? 'Déficit (Sobregiro)' : 'Presupuesto Restante'}
+                </span>
+                <div className="text-2xl font-black" style={{ color: isOverBudget ? 'var(--danger)' : 'var(--success)' }}>
+                  ${Math.abs(remainingBudget).toLocaleString()}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ── MÁQUINAS ASIGNADAS ── */}
-          {project.machineAssignments && project.machineAssignments.length > 0 && (
-            <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
-              <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-                <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-                  <Truck className="w-6 h-6" style={{ color: 'var(--accent)' }} />
-                  Máquinas Asignadas
-                </h2>
-                <Link
-                  href="/maquinas"
-                  className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-colors"
-                  style={{ background: 'var(--bg-surface-alt)', color: 'var(--text-muted)' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-                >
-                  Gestionar en Máquinas <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
-              <div className="space-y-2">
-                {project.machineAssignments.map(a => {
-                  const isActive = !a.endDate;
-                  const days = daysBetween(a.startDate, a.endDate || new Date());
-                  const cost = days * a.dailyRateSnapshot;
-                  return (
-                    <div
-                      key={a.id}
-                      className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-xl border"
-                      style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
-                    >
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{a.machine.name}</p>
-                          {isActive && (
-                            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-                              Activa
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {formatDateOnly(a.startDate)} — {a.endDate ? formatDateOnly(a.endDate) : 'presente'} ({days} {days === 1 ? 'día' : 'días'})
-                        </p>
-                      </div>
-                      <span className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>${cost.toLocaleString()}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* ── FACTURACIÓN Y COBROS ── */}
+          {/* Facturación y Cobros */}
           {canSeeMoney && (
             <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
-              <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-                <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-                  <Receipt className="w-6 h-6" style={{ color: 'var(--accent)' }} />
-                  Facturación y Cobros
-                </h2>
-              </div>
+              <h2 className="text-xl font-bold flex items-center gap-3 mb-6" style={{ color: 'var(--text-primary)' }}>
+                <Receipt className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+                Facturación y Estado de Cobros
+              </h2>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
@@ -1432,587 +1532,487 @@ export default function ProjectDetailClient({ project, role, products = [] }: { 
               </div>
             </div>
           )}
+        </div>
+      )}
 
-          {/* ── PLAN DE TRABAJO ── */}
+      {/* ── TAB 3: HORAS Y EQUIPOS ── */}
+      {activeTab === 'HORAS_EQUIPOS' && (
+        <div className="space-y-6">
+          {/* Registro de Horas */}
           <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
               <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-                <ListChecks className="w-6 h-6" style={{ color: 'var(--accent)' }} />
-                Plan de Trabajo
+                <Clock className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+                Registro de Horas Laboradas
               </h2>
-              <div className="flex items-center gap-4">
-                <span className="text-sm hidden sm:inline-block" style={{ color: 'var(--text-muted)' }}>
-                  {tasks.length} {tasks.length === 1 ? 'tarea' : 'tareas'}
-                </span>
-                <div className="flex p-1 rounded-lg border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
-                  {(['LISTA', 'GANTT'] as const).map(mode => (
-                    <button
-                      key={mode}
-                      onClick={() => setViewMode(mode)}
-                      className="px-3 py-1 text-xs font-bold rounded-md transition-colors"
-                      style={viewMode === mode
-                        ? { background: 'var(--accent)', color: '#fff' }
-                        : { color: 'var(--text-muted)' }
-                      }
-                    >
-                      {mode === 'LISTA' ? 'Lista' : 'Cronograma'}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                {totalHours.toLocaleString()} {totalHours === 1 ? 'hora registrada' : 'horas registradas'}
+              </span>
             </div>
 
-            {/* Department Tabs */}
-            {departments.length > 0 && (
-              <div className="flex overflow-x-auto gap-2 mb-6 pb-2">
-                {departments.map(dept => (
-                  <button
-                    key={dept.id}
-                    onClick={() => setActiveDeptId(dept.id)}
-                    className="px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap border"
-                    style={
-                      activeDeptId === dept.id
-                        ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
-                        : { background: 'var(--bg-surface-alt)', color: 'var(--text-secondary)', borderColor: 'var(--border)' }
-                    }
+            {/* Add Work Log Row */}
+            <div
+              className="grid grid-cols-1 md:grid-cols-[1fr_1fr_2fr_auto] gap-3 mb-6 p-4 rounded-xl border"
+              style={{ background: 'var(--accent-subtle)', borderColor: 'var(--accent)' }}
+            >
+              <div>
+                <label className="block text-[10px] font-bold mb-1 uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                  <Calendar className="w-3 h-3" /> Fecha
+                </label>
+                <input type="date" value={newLogDate} onChange={e => setNewLogDate(e.target.value)} style={inputFieldStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold mb-1 uppercase" style={{ color: 'var(--text-muted)' }}>Horas</label>
+                <input
+                  type="number"
+                  min="0.5"
+                  max="24"
+                  step="0.5"
+                  placeholder="ej. 8"
+                  value={newLogHours}
+                  onChange={e => setNewLogHours(e.target.value)}
+                  style={inputFieldStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold mb-1 uppercase" style={{ color: 'var(--text-muted)' }}>Descripción (opcional)</label>
+                <input
+                  type="text"
+                  placeholder="ej. Cableado de tablero principal"
+                  value={newLogDesc}
+                  onChange={e => setNewLogDesc(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddWorkLog()}
+                  style={inputFieldStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={handleAddWorkLog}
+                  disabled={!newLogHours || addingLog}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: 'var(--accent)' }}
+                >
+                  <Plus className="w-4 h-4" />
+                  Registrar
+                </button>
+              </div>
+            </div>
+            {logError && (
+              <p className="text-xs font-bold mb-4 px-1" style={{ color: 'var(--danger)' }}>{logError}</p>
+            )}
+
+            {/* Work Log List */}
+            {workLogs.length === 0 ? (
+              <div className="text-center p-12 border-2 border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                <Clock className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">Sin horas registradas aún.</p>
+                <p className="text-sm mt-1 opacity-70">Registra las horas trabajadas en este proyecto para conocer su costo real.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                {workLogs.map(log => (
+                  <div
+                    key={log.id}
+                    className="grid grid-cols-1 md:grid-cols-[1fr_2fr_2fr_1fr_auto] gap-3 items-center p-4 rounded-2xl border"
+                    style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
                   >
-                    {dept.name}
-                    <span
-                      className="px-2 py-0.5 rounded-md text-[10px]"
-                      style={{ background: 'rgba(0,0,0,0.2)' }}
-                    >
-                      {dept.progress}%
+                    <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                      {formatDateOnly(log.date)}
                     </span>
-                  </button>
+                    <span className="text-xs truncate" title={log.user.email} style={{ color: 'var(--text-muted)' }}>
+                      {log.user.email}
+                    </span>
+                    <span className="text-xs line-clamp-1" style={{ color: 'var(--text-secondary)' }}>
+                      {log.description || <span className="italic opacity-60">Sin descripción</span>}
+                    </span>
+                    <div className="flex items-center gap-2 justify-end">
+                      <span className="text-sm font-black px-2 py-0.5 rounded border" style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', borderColor: 'var(--accent)' }}>
+                        {log.hours} h
+                      </span>
+                      {canSeeMoney && (
+                        <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
+                          ${(log.hours * log.hourlyCostSnapshot).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    {canSeeMoney ? (
+                      <button
+                        onClick={() => handleDeleteWorkLog(log.id)}
+                        className="p-2 rounded-lg transition-colors justify-self-end"
+                        style={{ color: 'var(--text-muted)' }}
+                        onMouseEnter={e => {
+                          const el = e.currentTarget as HTMLElement;
+                          el.style.color = 'var(--danger)';
+                          el.style.background = 'var(--danger-bg)';
+                        }}
+                        onMouseLeave={e => {
+                          const el = e.currentTarget as HTMLElement;
+                          el.style.color = 'var(--text-muted)';
+                          el.style.background = '';
+                        }}
+                        title="Eliminar registro"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    ) : <span />}
+                  </div>
                 ))}
               </div>
             )}
+          </div>
 
-            {viewMode === 'LISTA' ? (
-              <>
-                {/* Add Task Row */}
-                {role !== 'TECNICO' && (
-                  <div
-                    className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 mb-4 p-4 rounded-xl border"
-                    style={{ background: 'var(--accent-subtle)', borderColor: 'var(--accent)' }}
-                  >
-                    <div>
-                      <label className="block text-[10px] font-bold mb-1 uppercase" style={{ color: 'var(--text-muted)' }}>Nombre de la tarea</label>
-                      <input
-                        type="text"
-                        placeholder="ej. Instalación eléctrica panel A"
-                        value={newTaskName}
-                        onChange={e => setNewTaskName(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleAddTask()}
-                        style={inputFieldStyle}
-                        onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-                        onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold mb-1 uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-                        <Link2 className="w-3 h-3" /> Predecesora
-                      </label>
-                      <select
-                        value={newTaskPredecessor}
-                        onChange={e => setNewTaskPredecessor(e.target.value)}
-                        style={inputFieldStyle}
-                      >
-                        <option value="">(Ninguna)</option>
-                        {allProjectTasks.map(t => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold mb-1 uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-                        <Calendar className="w-3 h-3" /> Inicio
-                      </label>
-                      <input type="date" value={newTaskStart} onChange={e => setNewTaskStart(e.target.value)} style={inputFieldStyle}
-                        onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-                        onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')} />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold mb-1 uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-                        <Calendar className="w-3 h-3" /> Fin estimado
-                      </label>
-                      <input type="date" value={newTaskEnd} onChange={e => setNewTaskEnd(e.target.value)} style={inputFieldStyle}
-                        onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-                        onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')} />
-                    </div>
-                    <div className="flex items-end">
-                      <button
-                        onClick={handleAddTask}
-                        disabled={!newTaskName.trim() || addingTask}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        style={{ background: 'var(--accent)' }}
-                      >
-                        <Plus className="w-4 h-4" />
-                        Agregar
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Task List */}
-                {tasks.length === 0 ? (
-                  <div className="text-center p-12 border-2 border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-                    <ListChecks className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                    <p className="font-medium">Sin tareas aún.</p>
-                    <p className="text-sm mt-1 opacity-70">Agrega la primera tarea del plan de trabajo.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {tasks.map(task => (
-                      <TaskRow
-                        key={task.id}
-                        task={task}
-                        projectId={project.id}
-                        departmentId={activeDeptId}
-                        role={role}
-                        products={products}
-                        allProjectTasks={allProjectTasks}
-                        onOptimisticUpdate={handleOptimisticUpdate}
-                        onOptimisticDelete={handleOptimisticDelete}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
+          {/* Máquinas Asignadas */}
+          <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+              <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
+                <Truck className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+                Máquinas y Equipos Asignados
+              </h2>
+              <Link
+                href="/maquinas"
+                className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-colors"
+                style={{ background: 'var(--bg-surface-alt)', color: 'var(--text-muted)' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+              >
+                Gestionar en Máquinas <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+            {(!project.machineAssignments || project.machineAssignments.length === 0) ? (
+              <div className="text-center p-12 border-2 border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                <Truck className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No hay máquinas asignadas a este proyecto.</p>
+              </div>
             ) : (
-              /* ── GANTT VIEW (Fase 5) ── */
-              <div className="relative overflow-x-auto pb-4">
-                {tasks.filter(t => t.startDate && t.endDate).length === 0 ? (
-                  <div className="text-center p-12 border border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-                    <Calendar className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                    <p className="font-medium">No hay tareas con fechas asignadas.</p>
-                    <p className="text-xs mt-1 opacity-70">Regresa a la vista de Lista para establecer fechas.</p>
-                  </div>
-                ) : (
-                  <div className="relative min-w-[600px] mt-4 space-y-3">
-                    {(() => {
-                      const tasksWithDates = tasks.filter(t => t.startDate && t.endDate);
-                      const minDate = new Date(Math.min(...tasksWithDates.map(t => new Date(t.startDate!).getTime())));
-                      const maxDate = new Date(Math.max(...tasksWithDates.map(t => new Date(t.endDate!).getTime())));
-                      const totalDuration = Math.max(1, maxDate.getTime() - minDate.getTime());
-                      const now = new Date();
-
-                      const taskPositions = tasksWithDates.map((t, idx) => {
-                        const start = new Date(t.startDate!);
-                        const end = new Date(t.endDate!);
-                        const leftOffset = ((start.getTime() - minDate.getTime()) / totalDuration) * 100;
-                        const width = ((end.getTime() - start.getTime()) / totalDuration) * 100;
-                        const predecessor = t.dependsOnTask || allProjectTasks.find(pt => pt.id === t.dependsOnTaskId);
-                        const isOverdue = end < now && t.progress < 100;
-                        const isBlocked = predecessor ? predecessor.progress < 100 : false;
-                        return { task: t, idx, leftOffset, width, predecessor, isOverdue, isBlocked };
-                      });
-
-                      return (
-                        <>
-                          {/* SVG Connectors */}
-                          <svg className="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible">
-                            {taskPositions.map(tp => {
-                              if (!tp.task.dependsOnTaskId) return null;
-                              const predPos = taskPositions.find(p => p.task.id === tp.task.dependsOnTaskId);
-                              if (!predPos) return null;
-
-                              const x1 = Math.min(98, Math.max(1, predPos.leftOffset + predPos.width));
-                              const y1 = predPos.idx * 60 + 24;
-                              const x2 = Math.min(98, Math.max(1, tp.leftOffset));
-                              const y2 = tp.idx * 60 + 24;
-
-                              return (
-                                <path
-                                  key={`svg-conn-${tp.task.id}`}
-                                  d={`M ${x1}% ${y1} C ${(x1 + x2) / 2}% ${y1}, ${(x1 + x2) / 2}% ${y2}, ${x2}% ${y2}`}
-                                  stroke={tp.isBlocked ? 'var(--warning)' : 'var(--accent)'}
-                                  strokeWidth="2"
-                                  strokeDasharray={tp.isBlocked ? '4 3' : undefined}
-                                  fill="none"
-                                />
-                              );
-                            })}
-                          </svg>
-
-                          {taskPositions.map(({ task, leftOffset, width, predecessor, isOverdue, isBlocked }) => {
-                            const start = new Date(task.startDate!);
-                            const end = new Date(task.endDate!);
-                            const isDone = task.status === 'COMPLETADA';
-                            const isInProgress = task.status === 'EN_PROGRESO';
-
-                            const borderStyle = isOverdue
-                              ? 'border-red-500 border-l-4'
-                              : isBlocked
-                                ? 'border-amber-500 border-l-4'
-                                : isDone
-                                  ? 'border-emerald-500 border-l-4'
-                                  : isInProgress
-                                    ? 'border-amber-500 border-l-4'
-                                    : 'border-[var(--accent)] border-l-4';
-
-                            return (
-                              <div
-                                key={task.id}
-                                className={`relative h-12 rounded-xl overflow-hidden flex items-center group border ${borderStyle}`}
-                                style={{ background: isOverdue ? 'var(--danger-bg)' : 'var(--bg-surface-alt)', borderColor: isOverdue ? 'var(--danger)' : 'var(--border)' }}
-                              >
-                                <div
-                                  className={`absolute h-full transition-all duration-500 ${
-                                    isDone ? 'bg-emerald-500/20' : isInProgress ? 'bg-amber-500/20' : ''
-                                  }`}
-                                  style={{
-                                    left: `${Math.max(0, leftOffset)}%`,
-                                    width: `${Math.max(2, width)}%`,
-                                    background: isDone ? undefined : isInProgress ? undefined : 'var(--accent-subtle)'
-                                  }}
-                                >
-                                  <div
-                                    className={`h-full opacity-30 ${isDone ? 'bg-emerald-500' : isInProgress ? 'bg-amber-500' : ''}`}
-                                    style={!isDone && !isInProgress ? { width: `${task.progress}%`, background: isOverdue ? 'var(--danger)' : 'var(--accent)' } : { width: `${task.progress}%` }}
-                                  />
-                                </div>
-                                <div className="relative z-10 px-4 flex justify-between w-full pointer-events-none">
-                                  <div className="flex items-center gap-2 truncate max-w-[55%]">
-                                    {isBlocked && <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
-                                    {isOverdue && <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-                                    <span className="text-xs font-bold truncate" style={{ color: isOverdue ? 'var(--danger)' : 'var(--text-primary)' }}>
-                                      {task.name}
-                                    </span>
-                                    {predecessor && (
-                                      <span className="text-[9px] font-normal opacity-70 truncate">
-                                        (predecesora: {predecessor.name})
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded opacity-50 group-hover:opacity-100 transition-opacity" style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}>
-                                    {formatDateOnly(start)} - {formatDateOnly(end)} ({task.progress}%)
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                          <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest pt-2 px-2 border-t" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
-                            <span>Inicio ({formatDateOnly(minDate)})</span>
-                            <span>Fin Estimado ({formatDateOnly(maxDate)})</span>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
+              <div className="space-y-2">
+                {project.machineAssignments.map(a => {
+                  const isActive = !a.endDate;
+                  const days = daysBetween(a.startDate, a.endDate || new Date());
+                  const cost = days * a.dailyRateSnapshot;
+                  return (
+                    <div
+                      key={a.id}
+                      className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-xl border"
+                      style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{a.machine.name}</p>
+                          {isActive && (
+                            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+                              Activa
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          {formatDateOnly(a.startDate)} — {a.endDate ? formatDateOnly(a.endDate) : 'presente'} ({days} {days === 1 ? 'día' : 'días'})
+                        </p>
+                      </div>
+                      <span className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>${cost.toLocaleString()}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
-        </>
+        </div>
       )}
 
-      {/* ── REGISTRO DE HORAS (MANO DE OBRA) ── */}
-      <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-          <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-            <Clock className="w-6 h-6" style={{ color: 'var(--accent)' }} />
-            Registro de Horas
-          </h2>
-          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            {totalHours.toLocaleString()} {totalHours === 1 ? 'hora registrada' : 'horas registradas'}
-          </span>
-        </div>
-
-        {/* Add Work Log Row */}
-        <div
-          className="grid grid-cols-1 md:grid-cols-[1fr_1fr_2fr_auto] gap-3 mb-4 p-4 rounded-xl border"
-          style={{ background: 'var(--accent-subtle)', borderColor: 'var(--accent)' }}
-        >
-          <div>
-            <label className="block text-[10px] font-bold mb-1 uppercase flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-              <Calendar className="w-3 h-3" /> Fecha
-            </label>
-            <input type="date" value={newLogDate} onChange={e => setNewLogDate(e.target.value)} style={inputFieldStyle}
-              onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')} />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold mb-1 uppercase" style={{ color: 'var(--text-muted)' }}>Horas</label>
-            <input
-              type="number"
-              min="0.5"
-              max="24"
-              step="0.5"
-              placeholder="ej. 8"
-              value={newLogHours}
-              onChange={e => setNewLogHours(e.target.value)}
-              style={inputFieldStyle}
-              onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold mb-1 uppercase" style={{ color: 'var(--text-muted)' }}>Descripción (opcional)</label>
-            <input
-              type="text"
-              placeholder="ej. Cableado de tablero principal"
-              value={newLogDesc}
-              onChange={e => setNewLogDesc(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAddWorkLog()}
-              style={inputFieldStyle}
-              onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-            />
-          </div>
-          <div className="flex items-end">
-            <button
-              onClick={handleAddWorkLog}
-              disabled={!newLogHours || addingLog}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ background: 'var(--accent)' }}
-            >
-              <Plus className="w-4 h-4" />
-              Registrar
-            </button>
-          </div>
-        </div>
-        {logError && (
-          <p className="text-xs font-bold mb-4 px-1" style={{ color: 'var(--danger)' }}>{logError}</p>
-        )}
-
-        {/* Work Log List */}
-        {workLogs.length === 0 ? (
-          <div className="text-center p-12 border-2 border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-            <Clock className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">Sin horas registradas aún.</p>
-            <p className="text-sm mt-1 opacity-70">Registra las horas trabajadas en este proyecto para conocer su costo real.</p>
-          </div>
-        ) : (
-          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-            {workLogs.map(log => (
-              <div
-                key={log.id}
-                className="grid grid-cols-1 md:grid-cols-[1fr_2fr_2fr_1fr_auto] gap-3 items-center p-4 rounded-2xl border"
-                style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
+      {/* ── TAB 4: DOCUMENTOS Y NOTAS ── */}
+      {activeTab === 'DOCUMENTOS' && (
+        <div className="space-y-6">
+          {/* DMS */}
+          <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
+                <FileText className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+                Documentos Técnicos (DMS)
+              </h2>
+              <button
+                onClick={() => setDocumentModalOpen(true)}
+                className="flex items-center gap-2 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{ background: 'var(--accent)' }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = '0.9')}
+                onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
               >
-                <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
-                  {formatDateOnly(log.date)}
-                </span>
-                <span className="text-xs truncate" title={log.user.email} style={{ color: 'var(--text-muted)' }}>
-                  {log.user.email}
-                </span>
-                <span className="text-xs line-clamp-1" style={{ color: 'var(--text-secondary)' }}>
-                  {log.description || <span className="italic opacity-60">Sin descripción</span>}
-                </span>
-                <div className="flex items-center gap-2 justify-end">
-                  <span className="text-sm font-black px-2 py-0.5 rounded border" style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', borderColor: 'var(--accent)' }}>
-                    {log.hours} h
-                  </span>
-                  {canSeeMoney && (
-                    <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
-                      ${(log.hours * log.hourlyCostSnapshot).toLocaleString()}
-                    </span>
-                  )}
-                </div>
-                {canSeeMoney ? (
-                  <button
-                    onClick={() => handleDeleteWorkLog(log.id)}
-                    className="p-2 rounded-lg transition-colors justify-self-end"
-                    style={{ color: 'var(--text-muted)' }}
-                    onMouseEnter={e => {
-                      const el = e.currentTarget as HTMLElement;
-                      el.style.color = 'var(--danger)';
-                      el.style.background = 'var(--danger-bg)';
-                    }}
-                    onMouseLeave={e => {
-                      const el = e.currentTarget as HTMLElement;
-                      el.style.color = 'var(--text-muted)';
-                      el.style.background = '';
-                    }}
-                    title="Eliminar registro"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                ) : <span />}
+                <UploadCloud className="w-4 h-4" />
+                Subir Documento
+              </button>
+            </div>
+
+            {(!project.documents || project.documents.length === 0) ? (
+              <div className="text-center p-12 border-2 border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No hay documentos técnicos subidos.</p>
+                <p className="text-sm mt-1 opacity-70">Sube el primer plano o documento para empezar.</p>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            ) : (
+              <div className="space-y-6">
+                {Object.entries(
+                  project.documents.reduce((acc, doc) => {
+                    const f = doc.folder || 'General';
+                    if (!acc[f]) acc[f] = [];
+                    acc[f].push(doc);
+                    return acc;
+                  }, {} as Record<string, ProjectDocument[]>)
+                ).sort(([a], [b]) => a.localeCompare(b)).map(([folderName, docsInFolder]) => (
+                  <div key={folderName} className="rounded-xl border overflow-hidden" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                    <div className="px-4 py-3 border-b flex items-center gap-2" style={{ background: 'var(--bg-base)', borderColor: 'var(--border)' }}>
+                      <div className="p-1.5 rounded-md" style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>
+                      </div>
+                      <h3 className="font-bold" style={{ color: 'var(--text-primary)' }}>{folderName}</h3>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-md ml-2" style={{ background: 'var(--border)', color: 'var(--text-muted)' }}>
+                        {docsInFolder.length}
+                      </span>
+                    </div>
 
-      {/* ── GESTOR DOCUMENTAL (DMS) ── */}
-      <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-            <FileText className="w-6 h-6" style={{ color: 'var(--accent)' }} />
-            Documentos Técnicos (DMS)
-          </h2>
-          <button
-            onClick={() => setDocumentModalOpen(true)}
-            className="flex items-center gap-2 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            style={{ background: 'var(--accent)' }}
-            onMouseEnter={e => (e.currentTarget.style.opacity = '0.9')}
-            onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-          >
-            <UploadCloud className="w-4 h-4" />
-            Subir Documento
-          </button>
-        </div>
-
-        {(!project.documents || project.documents.length === 0) ? (
-          <div className="text-center p-12 border-2 border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-            <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">No hay documentos técnicos subidos.</p>
-            <p className="text-sm mt-1 opacity-70">Sube el primer plano o documento para empezar.</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {Object.entries(
-              project.documents.reduce((acc, doc) => {
-                const f = doc.folder || 'General';
-                if (!acc[f]) acc[f] = [];
-                acc[f].push(doc);
-                return acc;
-              }, {} as Record<string, ProjectDocument[]>)
-            ).sort(([a], [b]) => a.localeCompare(b)).map(([folderName, docsInFolder]) => (
-              <div key={folderName} className="rounded-xl border overflow-hidden" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
-                <div className="px-4 py-3 border-b flex items-center gap-2" style={{ background: 'var(--bg-base)', borderColor: 'var(--border)' }}>
-                  <div className="p-1.5 rounded-md" style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>
-                  </div>
-                  <h3 className="font-bold" style={{ color: 'var(--text-primary)' }}>{folderName}</h3>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-md ml-2" style={{ background: 'var(--border)', color: 'var(--text-muted)' }}>
-                    {docsInFolder.length}
-                  </span>
-                </div>
-
-                <div className="p-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {docsInFolder.map(doc => {
-                    const latestVersion = doc.versions[0];
-                    const isExpanded = expandedDocs.includes(doc.id);
-                    return (
-                      <Card key={doc.id} className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <button
-                            onClick={() => toggleDoc(doc.id)}
-                            className="flex items-center gap-1 transition-colors"
-                            style={{ color: 'var(--text-muted)' }}
-                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
-                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-                          >
-                            {isExpanded ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
-                            <span className="font-medium text-sm truncate text-left" style={{ color: 'var(--text-primary)' }}>{doc.name}</span>
-                          </button>
-                          <span className="uppercase text-[10px] font-bold shrink-0" style={{ color: 'var(--text-muted)' }}>{doc.type}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm mb-3">
-                          <span className="px-2 py-0.5 rounded-md font-semibold text-xs border" style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', borderColor: 'var(--accent)' }}>
-                            v{latestVersion?.version}
-                          </span>
-                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                            {latestVersion ? new Date(latestVersion.createdAt).toLocaleDateString() : '-'}
-                          </span>
-                        </div>
-                        {latestVersion?.url && (
-                          <a
-                            href={latestVersion.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center w-full gap-1.5 font-medium text-xs px-3 py-2 rounded-lg transition-colors"
-                            style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}
-                            onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
-                            onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-                          >
-                            <Download className="w-3.5 h-3.5" /> Descargar Última Versión
-                          </a>
-                        )}
-                        {isExpanded && (
-                          <div className="mt-4 space-y-3 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
-                            <h4 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                              Historial de Versiones
-                            </h4>
-                            {doc.versions.map(v => (
-                              <div key={v.id} className="p-3 border rounded-lg" style={{ background: 'var(--bg-base)', borderColor: 'var(--border)' }}>
-                                <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                                  <span className="font-bold px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'var(--bg-surface-alt)', color: 'var(--text-secondary)' }}>v{v.version}</span>
-                                  <span className="text-[10px] flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-                                    <Clock className="w-3 h-3" /> {new Date(v.createdAt).toLocaleString()}
-                                  </span>
-                                  <span className="text-[10px] border-l pl-2" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
-                                    por {v.uploadedBy}
-                                  </span>
-                                </div>
-                                <p className="text-xs mb-2 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                                  {v.notes || <span className="italic" style={{ color: 'var(--text-muted)' }}>Sin notas adicionales</span>}
-                                </p>
-                                <a
-                                  href={v.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded transition-colors"
-                                  style={{ color: 'var(--text-muted)' }}
-                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; (e.currentTarget as HTMLElement).style.background = 'var(--accent-subtle)'; }}
-                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.background = ''; }}
-                                >
-                                  <Download className="w-3 h-3" /> Bajar esta versión
-                                </a>
+                    <div className="p-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {docsInFolder.map(doc => {
+                        const latestVersion = doc.versions[0];
+                        const isExpanded = expandedDocs.includes(doc.id);
+                        return (
+                          <Card key={doc.id} className="p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <button
+                                onClick={() => toggleDoc(doc.id)}
+                                className="flex items-center gap-1 transition-colors"
+                                style={{ color: 'var(--text-muted)' }}
+                                onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
+                                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+                              >
+                                {isExpanded ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
+                                <span className="font-medium text-sm truncate text-left" style={{ color: 'var(--text-primary)' }}>{doc.name}</span>
+                              </button>
+                              <span className="uppercase text-[10px] font-bold shrink-0" style={{ color: 'var(--text-muted)' }}>{doc.type}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm mb-3">
+                              <span className="px-2 py-0.5 rounded-md font-semibold text-xs border" style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', borderColor: 'var(--accent)' }}>
+                                v{latestVersion?.version}
+                              </span>
+                              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                {latestVersion ? new Date(latestVersion.createdAt).toLocaleDateString() : '-'}
+                              </span>
+                            </div>
+                            {latestVersion?.url && (
+                              <a
+                                href={latestVersion.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center w-full gap-1.5 font-medium text-xs px-3 py-2 rounded-lg transition-colors"
+                                style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}
+                                onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
+                                onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                              >
+                                <Download className="w-3.5 h-3.5" /> Descargar Última Versión
+                              </a>
+                            )}
+                            {isExpanded && (
+                              <div className="mt-4 space-y-3 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
+                                <h4 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                                  Historial de Versiones
+                                </h4>
+                                {doc.versions.map(v => (
+                                  <div key={v.id} className="p-3 border rounded-lg" style={{ background: 'var(--bg-base)', borderColor: 'var(--border)' }}>
+                                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                      <span className="font-bold px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'var(--bg-surface-alt)', color: 'var(--text-secondary)' }}>v{v.version}</span>
+                                      <span className="text-[10px] flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                                        <Clock className="w-3 h-3" /> {new Date(v.createdAt).toLocaleString()}
+                                      </span>
+                                      <span className="text-[10px] border-l pl-2" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
+                                        por {v.uploadedBy}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs mb-2 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                                      {v.notes || <span className="italic" style={{ color: 'var(--text-muted)' }}>Sin notas adicionales</span>}
+                                    </p>
+                                    <a
+                                      href={v.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded transition-colors"
+                                      style={{ color: 'var(--text-muted)' }}
+                                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; (e.currentTarget as HTMLElement).style.background = 'var(--accent-subtle)'; }}
+                                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.background = ''; }}
+                                    >
+                                      <Download className="w-3 h-3" /> Bajar esta versión
+                                    </a>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
+                            )}
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Notas Rápidas */}
+          <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
+            <div className="flex items-center gap-3 mb-6">
+              <MessageSquare className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+              <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Notas Rápidas</h2>
+            </div>
+
+            <div className="flex gap-3 mb-6">
+              <input
+                type="text"
+                value={newNote}
+                onChange={e => setNewNote(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddNote()}
+                placeholder="Escribe una nota rápida..."
+                className="flex-1 rounded-xl px-4 py-3 text-sm outline-none"
+                style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+              />
+              <button
+                onClick={handleAddNote}
+                disabled={!newNote.trim() || addingNote}
+                className="p-3 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center shrink-0 text-white"
+                style={{ background: 'var(--accent)' }}
+                title="Guardar Nota"
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            </div>
+
+            {notes.length === 0 ? (
+              <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>No hay notas todavía.</p>
+            ) : (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                {notes.map(note => (
+                  <div key={note.id} className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                    <p className="text-sm mb-2 leading-relaxed" style={{ color: 'var(--text-primary)' }}>{note.content}</p>
+                    <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      <span className="font-bold" style={{ color: 'var(--text-secondary)' }}>{note.author}</span>
+                      <span>•</span>
+                      <span>{new Date(note.createdAt).toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 5: ACTIVIDAD Y GESTIÓN DE ESTADO ── */}
+      {activeTab === 'ACTIVIDAD' && (
+        <div className="space-y-6">
+          {/* Gestión de Estado */}
+          <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
+            <label className="flex items-center gap-2 text-lg font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
+              <AlertTriangle className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+              Gestión de Estado del Proyecto
+            </label>
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              {[
+                { id: 'NORMAL',  label: 'Normal',   Icon: CheckCircle2, activeStyle: { borderColor: 'var(--success)', background: 'var(--success-bg)', color: 'var(--success)' } },
+                { id: 'RIESGO',  label: 'En Riesgo',Icon: AlertTriangle, activeStyle: { borderColor: 'var(--warning)', background: 'var(--warning-bg)', color: 'var(--warning)' } },
+                { id: 'ATORADO', label: 'Atorado',  Icon: XCircle,      activeStyle: { borderColor: 'var(--danger)',  background: 'var(--danger-bg)',  color: 'var(--danger)' } },
+              ].map(({ id, label, Icon, activeStyle }) => (
+                <button
+                  key={id}
+                  onClick={() => handleSelectStatus(id)}
+                  disabled={role === 'TECNICO'}
+                  className="flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                  style={
+                    status === id
+                      ? activeStyle
+                      : { borderColor: 'var(--border)', background: 'var(--bg-surface-alt)', color: 'var(--text-muted)' }
+                  }
+                >
+                  <Icon className="w-6 h-6 mb-2" />
+                  <span className="text-xs font-bold">{label}</span>
+                </button>
+              ))}
+            </div>
+
+            {blockReason && (
+              <div className="p-4 rounded-xl border mb-6" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                <label className="block text-[10px] font-bold mb-1 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                  Motivo / Detalle de Causa
+                </label>
+                <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{blockReason}</p>
+              </div>
+            )}
+
+            {saved && <p className="text-xs font-bold text-emerald-500 mb-2">¡Estado actualizado con éxito!</p>}
+          </div>
+
+          {/* Audit Trail */}
+          <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
+                <Activity className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+                Bitácora de Eventos y Cambios (Audit Trail)
+              </h2>
+            </div>
+
+            {activityFeed.length === 0 ? (
+              <div className="p-12 text-center text-sm border border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                No hay eventos o actividad registrados en este proyecto aún.
+              </div>
+            ) : (
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                {activityFeed.map(item => {
+                  const isRisk = item.title.includes('Atorado') || item.title.includes('Riesgo');
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-4 rounded-xl border flex gap-4 transition-all"
+                      style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}
+                    >
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 mt-1"
+                        style={
+                          isRisk
+                            ? { background: 'var(--danger-bg)', color: 'var(--danger)' }
+                            : { background: 'var(--accent-subtle)', color: 'var(--accent)' }
+                        }
+                      >
+                        {isRisk ? <ShieldAlert className="w-5 h-5" /> : <Activity className="w-5 h-5" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                          <h4 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{item.title}</h4>
+                          <span className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>
+                            {formatDateOnly(item.date)} {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        {item.category && (
+                          <span className="inline-block px-2.5 py-0.5 mb-2 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-amber-500/10 text-amber-500 border-amber-500/20">
+                            Causa: {item.category}
+                          </span>
                         )}
-                      </Card>
-                    );
-                  })}
-                </div>
+                        {item.details && (
+                          <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                            {item.details}
+                          </p>
+                        )}
+                        <div className="mt-2 text-[10px] flex items-center gap-1 font-medium" style={{ color: 'var(--text-muted)' }}>
+                          <Users className="w-3 h-3" /> Registrado por {item.user}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            )}
           </div>
-        )}
-      </div>
-
-      {/* ── NOTAS RÁPIDAS ── */}
-      <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
-        <div className="flex items-center gap-3 mb-6">
-          <MessageSquare className="w-6 h-6" style={{ color: 'var(--accent)' }} />
-          <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Notas Rápidas</h2>
         </div>
-
-        <div className="flex gap-3 mb-6">
-          <input
-            type="text"
-            value={newNote}
-            onChange={e => setNewNote(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleAddNote()}
-            placeholder="Escribe una nota rápida..."
-            className="flex-1 rounded-xl px-4 py-3 text-sm outline-none"
-            style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-            onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-            onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-          />
-          <button
-            onClick={handleAddNote}
-            disabled={!newNote.trim() || addingNote}
-            className="p-3 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center shrink-0 text-white"
-            style={{ background: 'var(--accent)' }}
-            title="Guardar Nota"
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </div>
-
-        {notes.length === 0 ? (
-          <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>No hay notas todavía.</p>
-        ) : (
-          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-            {notes.map(note => (
-              <div key={note.id} className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
-                <p className="text-sm mb-2 leading-relaxed" style={{ color: 'var(--text-primary)' }}>{note.content}</p>
-                <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                  <span className="font-bold" style={{ color: 'var(--text-secondary)' }}>{note.author}</span>
-                  <span>•</span>
-                  <span>{new Date(note.createdAt).toLocaleString()}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
 
       <UploadDocumentModal
         isOpen={isDocumentModalOpen}
