@@ -125,54 +125,65 @@ export default function AlmacenClient({
 
   /* ── Vista de departamentos ─────────────────────────────────── */
   if (!currentDepartment) {
+    const mainDepartments = (departmentsDB || []).filter(d => !d.parentId);
+
     return (
-      <div className="space-y-8 animate-fade-in">
+      <div className="space-y-6 animate-fade-in">
+        {/* Header Navigation */}
         <div
-          className="flex flex-col md:flex-row justify-between items-center p-6 rounded-2xl border shadow-[var(--shadow-sm)]"
+          className="flex flex-col gap-4 p-4 md:p-5 rounded-xl border sticky top-0 z-40"
           style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
         >
-          <div>
-            <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-              Departamentos
-            </h2>
-            <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-              Selecciona un área para gestionar su inventario
-            </p>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-xl md:text-2xl font-bold truncate" style={{ color: 'var(--text-primary)' }}>
+                Almacén
+              </h2>
+              <p className="text-xs md:text-sm mt-1 hidden sm:block" style={{ color: 'var(--text-muted)' }}>
+                Gestión de inventario y departamentos
+              </p>
+            </div>
           </div>
-          <div className="mt-4 md:mt-0 flex items-center gap-3">
-              <button
-                onClick={() => router.push('/almacen/etiquetas')}
-                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all border"
-                style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-              >
-                <Printer className="w-4 h-4" /> Etiquetas
-              </button>
-              <button
-                onClick={() => router.push('/almacen/reports')}
-                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all border hidden sm:flex"
-                style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-              >
-                📊 Reportes
-              </button>
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2 w-full">
+            <button
+              onClick={() => router.push('/almacen/etiquetas')}
+              className="flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-2.5 rounded-lg font-semibold text-xs md:text-sm transition-all border"
+              style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+            >
+              <Printer className="w-4 h-4" />
+              <span className="hidden xs:inline">Etiquetas</span>
+            </button>
+
+            <button
+              onClick={() => router.push('/almacen/reports')}
+              className="flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-2.5 rounded-lg font-semibold text-xs md:text-sm transition-all border hidden sm:flex"
+              style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+            >
+              📊 <span className="hidden xs:inline">Reportes</span>
+            </button>
+
             {role !== 'TECNICO' && (
               <button
                 onClick={() => router.push('/almacen/reposiciones')}
-                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all border"
+                className="flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-2.5 rounded-lg font-semibold text-xs md:text-sm transition-all border"
                 style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
               >
-                🛒 Reposiciones
+                🛒 <span className="hidden xs:inline">Reposiciones</span>
               </button>
             )}
+
             {role !== 'TECNICO' && (
               <button
                 onClick={() => router.push('/almacen/departamentos')}
-                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all border hidden md:flex"
+                className="flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-2.5 rounded-lg font-semibold text-xs md:text-sm transition-all border hidden md:flex"
                 style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-focus)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
@@ -180,49 +191,100 @@ export default function AlmacenClient({
                 <Settings className="w-4 h-4" /> Áreas
               </button>
             )}
+
             {role !== 'TECNICO' && (
               <button
                 onClick={() => setProductModalOpen(true)}
-                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white transition-all hover:-translate-y-px active:translate-y-0"
+                className="flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-2.5 rounded-lg font-semibold text-xs md:text-sm text-white transition-all hover:-translate-y-px active:translate-y-0 ml-auto"
                 style={{ background: 'var(--accent)' }}
                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-hover)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent)')}
               >
-                <Plus className="w-5 h-5" />
-                Nuevo Producto
+                <Plus className="w-4 h-4" />
+                <span className="hidden xs:inline">Nuevo</span>
               </button>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {(departmentsDB || []).filter(d => !d.parentId).map(dept => {
+        {/* Departments Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+          {mainDepartments.map(dept => {
             const Icon = AVAILABLE_ICONS[dept.icon] || FolderOpen;
+            const productCount = dept._count?.products || 0;
+            const subDepts = (departmentsDB || []).filter(d => d.parentId === dept.id);
+
             return (
-              <button
-                key={dept.name}
-                onClick={() => router.push(`/almacen?department=${encodeURIComponent(dept.name)}`)}
-                className="group flex flex-col items-center justify-center p-8 rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]"
-                style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
-                onMouseEnter={e => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--border-focus)')}
-                onMouseLeave={e => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--border)')}
-              >
-                <div
-                  className="p-4 rounded-2xl mb-5 border transition-colors"
-                  style={{ background: `${dept.color}15`, borderColor: 'var(--border)' }}
+              <div key={dept.name} className="space-y-2">
+                {/* Main Department Card */}
+                <button
+                  onClick={() => router.push(`/almacen?department=${encodeURIComponent(dept.name)}`)}
+                  className="w-full group flex flex-col items-center justify-center p-4 md:p-5 rounded-xl border transition-all duration-200 hover:shadow-[var(--shadow-sm)] active:scale-95"
+                  style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+                  onMouseEnter={e => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--border-focus)')}
+                  onMouseLeave={e => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--border)')}
                 >
-                  <Icon className="w-10 h-10" strokeWidth={1.5} style={{ color: dept.color }} />
-                </div>
-                <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
-                  {dept.name}
-                </h3>
-                <p className="text-sm text-center" style={{ color: 'var(--text-muted)' }}>
-                  Ver inventario
-                </p>
-              </button>
+                  <div
+                    className="p-2.5 md:p-3 rounded-lg mb-2 md:mb-3 border transition-colors"
+                    style={{ background: `${dept.color}15`, borderColor: 'var(--border)' }}
+                  >
+                    <Icon className="w-6 h-6 md:w-7 md:h-7" strokeWidth={1.5} style={{ color: dept.color }} />
+                  </div>
+                  <h3 className="text-sm md:text-base font-bold text-center line-clamp-2" style={{ color: 'var(--text-primary)' }}>
+                    {dept.name}
+                  </h3>
+                  {productCount > 0 && (
+                    <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
+                      {productCount} producto{productCount !== 1 ? 's' : ''}
+                    </p>
+                  )}
+                </button>
+
+                {/* Sub-departments Row */}
+                {subDepts.length > 0 && (
+                  <div className="flex gap-1.5 flex-wrap">
+                    {subDepts.map(sub => {
+                      const SubIcon = AVAILABLE_ICONS[sub.icon] || Package;
+                      const subProductCount = sub._count?.products || 0;
+                      return (
+                        <button
+                          key={sub.name}
+                          onClick={() => router.push(`/almacen?department=${encodeURIComponent(sub.name)}`)}
+                          className="flex-1 min-w-[80px] flex flex-col items-center justify-center p-2 md:p-2.5 rounded-lg border transition-all duration-200 hover:shadow-[0_2px_4px_rgba(0,0,0,0.1)] active:scale-95 text-center"
+                          style={{ background: `${sub.color}08`, borderColor: `${sub.color}30` }}
+                          onMouseEnter={e => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--border-focus)')}
+                          onMouseLeave={e => ((e.currentTarget as HTMLElement).style.borderColor = `${sub.color}30`)}
+                          title={sub.name}
+                        >
+                          <SubIcon className="w-4 h-4 md:w-5 md:h-5 mb-0.5" strokeWidth={1.5} style={{ color: sub.color }} />
+                          <p className="text-[10px] md:text-xs font-semibold line-clamp-2" style={{ color: 'var(--text-primary)' }}>
+                            {sub.name}
+                          </p>
+                          {subProductCount > 0 && (
+                            <span className="text-[8px] md:text-[9px] mt-0.5 px-1 py-0.5 rounded" style={{ background: `${sub.color}15`, color: sub.color }}>
+                              {subProductCount}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
+
+        {mainDepartments.length === 0 && (
+          <div
+            className="text-center py-12 md:py-16 border border-dashed rounded-xl"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+          >
+            <FolderOpen className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-4 opacity-30" />
+            <p className="text-sm md:text-base font-medium">No hay departamentos configurados</p>
+            <p className="text-xs mt-2">Crea el primero para comenzar a gestionar tu inventario</p>
+          </div>
+        )}
 
         <ProductModal isOpen={isProductModalOpen} onClose={() => setProductModalOpen(false)} departments={departmentsDB || []} />
       </div>
