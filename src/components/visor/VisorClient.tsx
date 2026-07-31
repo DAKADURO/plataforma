@@ -685,12 +685,19 @@ export default function VisorClient({ initialProjects }: { initialProjects: Proj
                     })()}
 
                     {/* Notas / Comunicados de Planta */}
-                    {project.notes && project.notes.length > 0 && (
-                      <div className="mb-4 p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/10 flex items-start gap-2">
+                    {project.notes && project.notes.length > 0 ? (
+                      <div className="mb-4 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2">
                         <span className="text-amber-400 text-xs shrink-0 mt-0.5">💬</span>
-                        <p className="text-[11px] font-medium text-amber-200/90 line-clamp-1 italic">
-                          "{project.notes[0].content}"
-                        </p>
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[9px] font-extrabold uppercase tracking-wider text-amber-400 block mb-0.5">Última Nota / Aviso:</span>
+                          <p className="text-[11px] font-medium text-amber-200/90 line-clamp-1 italic">
+                            "{project.notes[0].content}"
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mb-4 p-2 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between text-[10px] text-slate-500">
+                        <span className="flex items-center gap-1.5 opacity-70">💬 Sin comunicados o notas publicadas</span>
                       </div>
                     )}
 

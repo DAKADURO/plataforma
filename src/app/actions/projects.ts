@@ -222,6 +222,8 @@ export async function addProjectNote(projectId: string, content: string, author:
     await prisma.projectNote.create({
       data: { projectId, content, author }
     })
+    revalidatePath('/visor')
+    revalidatePath('/proyectos')
     revalidatePath(`/proyectos/${projectId}`)
     return { success: true }
   } catch (error) {
