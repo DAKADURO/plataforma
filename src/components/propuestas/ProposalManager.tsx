@@ -93,6 +93,28 @@ export default function ProposalManager({
   const [showMatForm, setShowMatForm] = useState(false);
 
   const canEdit = userRole !== 'TECNICO';
+  const [changingStatus, setChangingStatus] = useState<string | null>(null);
+
+  const handleStatusChange = async (st: string) => {
+    if (!selected || selected.status === st || changingStatus) return;
+    const oldStatus = selected.status;
+    setChangingStatus(st);
+
+    // Optimistic update in 0ms!
+    setSelected(prev => prev ? { ...prev, status: st } : null);
+    setProposals(prev => prev.map(p => p.id === selected.id ? { ...p, status: st } : p));
+
+    const res = await updateProposal(selected.id, { status: st });
+    setChangingStatus(null);
+
+    if (res.success) {
+      refresh();
+    } else {
+      // Revert if server action failed
+      setSelected(prev => prev ? { ...prev, status: oldStatus } : null);
+      setProposals(prev => prev.map(p => p.id === selected.id ? { ...p, status: oldStatus } : p));
+    }
+  };
 
   /* ── helpers ── */
   const refresh = () => { startTransition(() => router.refresh()); };
@@ -311,9 +333,9 @@ export default function ProposalManager({
               </div>
 
               {selected.description && (
-                <div className="p-3 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                <div className="p-3 rounded-xl border overflow-hidden" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
                   <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Descripción</p>
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>{selected.description}</p>
+                  <p className="text-sm leading-relaxed break-words whitespace-pre-wrap overflow-hidden" style={{ color: 'var(--text-primary)' }}>{selected.description}</p>
                 </div>
               )}
 
@@ -325,17 +347,21 @@ export default function ProposalManager({
                     {ALL_STATUSES.filter(s => s !== 'PROYECTO').map(st => {
                       const sty = STATUS_STYLES[st];
                       const active = selected.status === st;
+                      const isLoading = changingStatus === st;
                       return (
                         <button
                           key={st}
-                          disabled={active}
-                          onClick={async () => { await updateProposal(selected.id, { status: st }); refresh(); }}
-                          className="px-3 py-2.5 text-xs font-bold rounded-xl border transition-all disabled:opacity-100 text-center"
+                          disabled={active || changingStatus !== null}
+                          onClick={() => handleStatusChange(st)}
+                          className="px-3 py-2.5 text-xs font-bold rounded-xl border transition-all text-center flex items-center justify-center gap-1.5 min-w-[90px] disabled:cursor-not-allowed"
                           style={active
-                            ? { background: sty.bg, color: sty.color, borderColor: sty.border }
-                            : { background: 'var(--bg-surface-alt)', color: 'var(--text-muted)', borderColor: 'var(--border)' }
+                            ? { background: sty.bg, color: sty.color, borderColor: sty.border, opacity: 1 }
+                            : { background: 'var(--bg-surface-alt)', color: 'var(--text-muted)', borderColor: 'var(--border)', opacity: changingStatus ? 0.5 : 1 }
                           }
                         >
+                          {isLoading ? (
+                            <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+                          ) : null}
                           {sty.label}
                         </button>
                       );
