@@ -734,6 +734,9 @@ export default function ProjectDetailClient({ project, role, products = [] }: { 
   const [deptError, setDeptError] = useState('');
   const [addingDept, startAddingDept] = useTransition();
 
+  // Document & Note Management
+  const [selectedDocFolder, setSelectedDocFolder] = useState<string>('TODOS');
+  const [noteTag, setNoteTag] = useState<string>('💡 General');
   const [notes, setNotes] = useState<ProjectNote[]>(project.notes || []);
   const [newNote, setNewNote] = useState('');
   const [addingNote, setAddingNote] = useState(false);
@@ -913,20 +916,27 @@ export default function ProjectDetailClient({ project, role, products = [] }: { 
     );
   };
 
-  const handleAddNote = async () => {
-    if (!newNote.trim() || addingNote) return;
+  const handleAddNote = () => {
+    if (!newNote.trim()) return;
+    const noteText = newNote.trim();
+    const finalContent = noteTag ? `${noteTag} ${noteText}` : noteText;
     setAddingNote(true);
     const optimisticNote: ProjectNote = {
       id: `tmp-${Date.now()}`,
-      content: newNote.trim(),
-      author: 'Tú',
-      createdAt: new Date(),
+      content: finalContent,
+      author: role,
+      createdAt: new Date()
     };
     setNotes(prev => [optimisticNote, ...prev]);
-    const contentToSend = newNote.trim();
     setNewNote('');
-    await addProjectNote(project.id, contentToSend, 'Usuario');
-    setAddingNote(false);
+
+    (async () => {
+      const res = await addProjectNote(project.id, finalContent, role);
+      if (!res.success) {
+        setNotes(prev => prev.filter(n => n.id !== optimisticNote.id));
+      }
+      setAddingNote(false);
+    })();
   };
 
   const handleAddWorkLog = () => {
@@ -1885,185 +1895,282 @@ export default function ProjectDetailClient({ project, role, products = [] }: { 
         </div>
       )}
 
-      {/* ── TAB 4: DOCUMENTOS Y NOTAS ── */}
+      {/* ── TAB 4: DOCUMENTOS Y NOTAS (GRID EN 2 COLUMNAS) ── */}
       {activeTab === 'DOCUMENTOS' && (
-        <div className="space-y-6">
-          {/* DMS */}
-          <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-                <FileText className="w-6 h-6" style={{ color: 'var(--accent)' }} />
-                Documentos Técnicos (DMS)
-              </h2>
-              <button
-                onClick={() => setDocumentModalOpen(true)}
-                className="flex items-center gap-2 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                style={{ background: 'var(--accent)' }}
-                onMouseEnter={e => (e.currentTarget.style.opacity = '0.9')}
-                onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-              >
-                <UploadCloud className="w-4 h-4" />
-                Subir Documento
-              </button>
-            </div>
-
-            {(!project.documents || project.documents.length === 0) ? (
-              <div className="text-center p-12 border-2 border-dashed rounded-2xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-                <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No hay documentos técnicos subidos.</p>
-                <p className="text-sm mt-1 opacity-70">Sube el primer plano o documento para empezar.</p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          {/* COLUMNA IZQUIERDA: GESTOR DOCUMENTAL DMS (2 Cols en Desktop) */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
+              <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+                <div>
+                  <h2 className="text-xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
+                    <FileText className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+                    Documentos Técnicos (DMS)
+                  </h2>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                    Planos, cotizaciones y especificaciones técnicas del proyecto.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setDocumentModalOpen(true)}
+                  className="flex items-center gap-2 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shrink-0"
+                  style={{ background: 'var(--accent)' }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.9')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                >
+                  <UploadCloud className="w-4 h-4" />
+                  Subir Documento
+                </button>
               </div>
-            ) : (
-              <div className="space-y-6">
-                {Object.entries(
-                  project.documents.reduce((acc, doc) => {
-                    const f = doc.folder || 'General';
-                    if (!acc[f]) acc[f] = [];
-                    acc[f].push(doc);
-                    return acc;
-                  }, {} as Record<string, ProjectDocument[]>)
-                ).sort(([a], [b]) => a.localeCompare(b)).map(([folderName, docsInFolder]) => (
-                  <div key={folderName} className="rounded-xl border overflow-hidden" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
-                    <div className="px-4 py-3 border-b flex items-center gap-2" style={{ background: 'var(--bg-base)', borderColor: 'var(--border)' }}>
-                      <div className="p-1.5 rounded-md" style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>
-                      </div>
-                      <h3 className="font-bold" style={{ color: 'var(--text-primary)' }}>{folderName}</h3>
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-md ml-2" style={{ background: 'var(--border)', color: 'var(--text-muted)' }}>
-                        {docsInFolder.length}
-                      </span>
-                    </div>
 
-                    <div className="p-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {docsInFolder.map(doc => {
-                        const latestVersion = doc.versions[0];
-                        const isExpanded = expandedDocs.includes(doc.id);
-                        return (
-                          <Card key={doc.id} className="p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <button
-                                onClick={() => toggleDoc(doc.id)}
-                                className="flex items-center gap-1 transition-colors"
-                                style={{ color: 'var(--text-muted)' }}
-                                onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
-                                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-                              >
-                                {isExpanded ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
-                                <span className="font-medium text-sm truncate text-left" style={{ color: 'var(--text-primary)' }}>{doc.name}</span>
-                              </button>
-                              <span className="uppercase text-[10px] font-bold shrink-0" style={{ color: 'var(--text-muted)' }}>{doc.type}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm mb-3">
-                              <span className="px-2 py-0.5 rounded-md font-semibold text-xs border" style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', borderColor: 'var(--accent)' }}>
-                                v{latestVersion?.version}
-                              </span>
-                              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                                {latestVersion ? new Date(latestVersion.createdAt).toLocaleDateString() : '-'}
-                              </span>
-                            </div>
-                            {latestVersion?.url && (
-                              <a
-                                href={latestVersion.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center w-full gap-1.5 font-medium text-xs px-3 py-2 rounded-lg transition-colors"
-                                style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}
-                                onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
-                                onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-                              >
-                                <Download className="w-3.5 h-3.5" /> Descargar Última Versión
-                              </a>
-                            )}
-                            {isExpanded && (
-                              <div className="mt-4 space-y-3 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
-                                <h4 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                                  Historial de Versiones
-                                </h4>
-                                {doc.versions.map(v => (
-                                  <div key={v.id} className="p-3 border rounded-lg" style={{ background: 'var(--bg-base)', borderColor: 'var(--border)' }}>
-                                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                                      <span className="font-bold px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'var(--bg-surface-alt)', color: 'var(--text-secondary)' }}>v{v.version}</span>
-                                      <span className="text-[10px] flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-                                        <Clock className="w-3 h-3" /> {new Date(v.createdAt).toLocaleString()}
-                                      </span>
-                                      <span className="text-[10px] border-l pl-2" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
-                                        por {v.uploadedBy}
-                                      </span>
-                                    </div>
-                                    <p className="text-xs mb-2 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                                      {v.notes || <span className="italic" style={{ color: 'var(--text-muted)' }}>Sin notas adicionales</span>}
-                                    </p>
-                                    <a
-                                      href={v.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded transition-colors"
-                                      style={{ color: 'var(--text-muted)' }}
-                                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; (e.currentTarget as HTMLElement).style.background = 'var(--accent-subtle)'; }}
-                                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.background = ''; }}
-                                    >
-                                      <Download className="w-3 h-3" /> Bajar esta versión
-                                    </a>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </Card>
-                        );
-                      })}
-                    </div>
+              {/* Folder Filter Chips */}
+              {project.documents && project.documents.length > 0 && (
+                <div className="flex items-center gap-2 overflow-x-auto mb-6 pb-2 scrollbar-hide border-b" style={{ borderColor: 'var(--border)' }}>
+                  <button
+                    onClick={() => setSelectedDocFolder('TODOS')}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap border"
+                    style={
+                      selectedDocFolder === 'TODOS'
+                        ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
+                        : { background: 'var(--bg-surface-alt)', color: 'var(--text-muted)', borderColor: 'var(--border)' }
+                    }
+                  >
+                    Todos ({project.documents.length})
+                  </button>
+                  {Array.from(new Set(project.documents.map(d => d.folder || 'General'))).map(folder => {
+                    const count = project.documents.filter(d => (d.folder || 'General') === folder).length;
+                    return (
+                      <button
+                        key={folder}
+                        onClick={() => setSelectedDocFolder(folder)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap border"
+                        style={
+                          selectedDocFolder === folder
+                            ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
+                            : { background: 'var(--bg-surface-alt)', color: 'var(--text-muted)', borderColor: 'var(--border)' }
+                        }
+                      >
+                        📁 {folder} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Dropzone Drop / Empty State */}
+              {(!project.documents || project.documents.length === 0) ? (
+                <div
+                  onClick={() => setDocumentModalOpen(true)}
+                  className="cursor-pointer text-center p-10 border-2 border-dashed rounded-2xl transition-all group"
+                  style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-alt)' }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                >
+                  <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center transition-transform group-hover:scale-110" style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}>
+                    <UploadCloud className="w-8 h-8" />
                   </div>
-                ))}
-              </div>
-            )}
+                  <h3 className="text-base font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
+                    Zona de Carga Documental
+                  </h3>
+                  <p className="text-xs mb-4 max-w-md mx-auto" style={{ color: 'var(--text-muted)' }}>
+                    Sube o arrastra el primer plano técnico, manual o cotización del proyecto para mantener el expediente al día.
+                  </p>
+                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-sm" style={{ background: 'var(--accent)' }}>
+                    + Subir Archivo o Plano
+                  </span>
+                  <div className="flex justify-center gap-2 mt-6">
+                    {['PDF', 'DWG', 'ZIP', 'PNG', 'DOCX'].map(ext => (
+                      <span key={ext} className="px-2 py-0.5 rounded text-[10px] font-bold border opacity-60" style={{ background: 'var(--bg-base)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                        {ext}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {Object.entries(
+                    project.documents
+                      .filter(d => selectedDocFolder === 'TODOS' || (d.folder || 'General') === selectedDocFolder)
+                      .reduce((acc, doc) => {
+                        const f = doc.folder || 'General';
+                        if (!acc[f]) acc[f] = [];
+                        acc[f].push(doc);
+                        return acc;
+                      }, {} as Record<string, ProjectDocument[]>)
+                  ).sort(([a], [b]) => a.localeCompare(b)).map(([folderName, docsInFolder]) => (
+                    <div key={folderName} className="rounded-xl border overflow-hidden" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                      <div className="px-4 py-3 border-b flex items-center gap-2" style={{ background: 'var(--bg-base)', borderColor: 'var(--border)' }}>
+                        <div className="p-1.5 rounded-md" style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>
+                        </div>
+                        <h3 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{folderName}</h3>
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-md ml-2" style={{ background: 'var(--border)', color: 'var(--text-muted)' }}>
+                          {docsInFolder.length}
+                        </span>
+                      </div>
+
+                      <div className="p-4 grid gap-4 md:grid-cols-2">
+                        {docsInFolder.map(doc => {
+                          const latestVersion = doc.versions[0];
+                          const isExpanded = expandedDocs.includes(doc.id);
+                          return (
+                            <Card key={doc.id} className="p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <button
+                                  onClick={() => toggleDoc(doc.id)}
+                                  className="flex items-center gap-1 transition-colors"
+                                  style={{ color: 'var(--text-muted)' }}
+                                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
+                                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+                                >
+                                  {isExpanded ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
+                                  <span className="font-medium text-sm truncate text-left" style={{ color: 'var(--text-primary)' }}>{doc.name}</span>
+                                </button>
+                                <span className="uppercase text-[10px] font-bold shrink-0" style={{ color: 'var(--text-muted)' }}>{doc.type}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-sm mb-3">
+                                <span className="px-2 py-0.5 rounded-md font-semibold text-xs border" style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', borderColor: 'var(--accent)' }}>
+                                  v{latestVersion?.version}
+                                </span>
+                                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                  {latestVersion ? new Date(latestVersion.createdAt).toLocaleDateString() : '-'}
+                                </span>
+                              </div>
+                              {latestVersion?.url && (
+                                <a
+                                  href={latestVersion.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center justify-center w-full gap-1.5 font-medium text-xs px-3 py-2 rounded-lg transition-colors"
+                                  style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}
+                                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
+                                  onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                                >
+                                  <Download className="w-3.5 h-3.5" /> Descargar Versión
+                                </a>
+                              )}
+                              {isExpanded && (
+                                <div className="mt-4 space-y-3 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
+                                  <h4 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                                    Historial de Versiones
+                                  </h4>
+                                  {doc.versions.map(v => (
+                                    <div key={v.id} className="p-3 border rounded-lg" style={{ background: 'var(--bg-base)', borderColor: 'var(--border)' }}>
+                                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                        <span className="font-bold px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'var(--bg-surface-alt)', color: 'var(--text-secondary)' }}>v{v.version}</span>
+                                        <span className="text-[10px] flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                                          <Clock className="w-3 h-3" /> {new Date(v.createdAt).toLocaleString()}
+                                        </span>
+                                      </div>
+                                      <a
+                                        href={v.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded transition-colors"
+                                        style={{ color: 'var(--text-muted)' }}
+                                      >
+                                        <Download className="w-3 h-3" /> Descargar
+                                      </a>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Notas Rápidas */}
-          <div className="rounded-2xl border p-6 md:p-8" style={sectionStyle}>
-            <div className="flex items-center gap-3 mb-6">
-              <MessageSquare className="w-6 h-6" style={{ color: 'var(--accent)' }} />
-              <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Notas Rápidas</h2>
-            </div>
-
-            <div className="flex gap-3 mb-6">
-              <input
-                type="text"
-                value={newNote}
-                onChange={e => setNewNote(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddNote()}
-                placeholder="Escribe una nota rápida..."
-                className="flex-1 rounded-xl px-4 py-3 text-sm outline-none"
-                style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-              />
-              <button
-                onClick={handleAddNote}
-                disabled={!newNote.trim() || addingNote}
-                className="p-3 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center shrink-0 text-white"
-                style={{ background: 'var(--accent)' }}
-                title="Guardar Nota"
-              >
-                <Send className="w-5 h-5" />
-              </button>
-            </div>
-
-            {notes.length === 0 ? (
-              <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>No hay notas todavía.</p>
-            ) : (
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-                {notes.map(note => (
-                  <div key={note.id} className="p-4 rounded-xl border" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
-                    <p className="text-sm mb-2 leading-relaxed" style={{ color: 'var(--text-primary)' }}>{note.content}</p>
-                    <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                      <span className="font-bold" style={{ color: 'var(--text-secondary)' }}>{note.author}</span>
-                      <span>•</span>
-                      <span>{new Date(note.createdAt).toLocaleString()}</span>
-                    </div>
-                  </div>
-                ))}
+          {/* COLUMNA DERECHA: BITÁCORA Y NOTAS RÁPIDAS (1 Col en Desktop) */}
+          <div className="lg:col-span-1 space-y-6">
+            <div className="rounded-2xl border p-6" style={sectionStyle}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold flex items-center gap-2.5" style={{ color: 'var(--text-primary)' }}>
+                  <MessageSquare className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+                  Bitácora de Notas
+                </h2>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--bg-surface-alt)', color: 'var(--text-muted)' }}>
+                  {notes.length}
+                </span>
               </div>
-            )}
+
+              {/* Tag Selector */}
+              <div className="mb-3 space-y-1.5">
+                <label className="block text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Categoría de Nota:</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {['💡 General', '⚠️ Aviso', '📌 Pendiente', '🔧 Técnico'].map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setNoteTag(tag)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold transition-all border"
+                      style={
+                        noteTag === tag
+                          ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
+                          : { background: 'var(--bg-base)', color: 'var(--text-muted)', borderColor: 'var(--border)' }
+                      }
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Input Area */}
+              <div className="space-y-2 mb-6">
+                <textarea
+                  rows={2}
+                  value={newNote}
+                  onChange={e => setNewNote(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleAddNote();
+                    }
+                  }}
+                  placeholder="Escribe un comunicado o nota rápida..."
+                  className="w-full rounded-xl p-3 text-xs outline-none resize-none"
+                  style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                />
+                <button
+                  onClick={handleAddNote}
+                  disabled={!newNote.trim() || addingNote}
+                  className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all text-white disabled:opacity-50"
+                  style={{ background: 'var(--accent)' }}
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  Publicar en Bitácora
+                </button>
+              </div>
+
+              {/* Feed List */}
+              {notes.length === 0 ? (
+                <div className="text-center p-6 border border-dashed rounded-xl" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                  <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-xs font-medium">Sin notas en la bitácora.</p>
+                  <p className="text-[10px] mt-0.5 opacity-70">Publica avisos o pendientes técnicos para el equipo.</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                  {notes.map(note => (
+                    <div key={note.id} className="p-3.5 rounded-xl border space-y-2" style={{ background: 'var(--bg-surface-alt)', borderColor: 'var(--border)' }}>
+                      <p className="text-xs leading-relaxed" style={{ color: 'var(--text-primary)' }}>{note.content}</p>
+                      <div className="flex items-center justify-between text-[10px] pt-1 border-t" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                        <span className="font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{note.author}</span>
+                        <span>{new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(note.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
