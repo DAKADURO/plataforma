@@ -323,3 +323,71 @@ export async function removeTeamMember(projectId: string, userId: string) {
   }
 }
 
+export async function addProjectDepartment(projectId: string, name: string) {
+  try {
+    await requireRole(['ADMIN', 'GERENTE'])
+    const trimmed = name.trim()
+    if (!trimmed) return { success: false, error: 'Nombre de departamento requerido.' }
+
+    const existing = await prisma.projectDepartment.findUnique({
+      where: { projectId_name: { projectId, name: trimmed } }
+    })
+    if (existing) {
+      return { success: false, error: `El departamento "${trimmed}" ya existe en este proyecto.` }
+    }
+
+    const dept = await prisma.projectDepartment.create({
+      data: {
+        projectId,
+        name: trimmed,
+        progress: 0,
+        status: 'NORMAL'
+      }
+    })
+
+    await logAudit({
+      action: 'ADD_PROJECT_DEPARTMENT',
+      entity: 'Project',
+      entityId: projectId,
+      details: JSON.stringify({ departmentName: trimmed })
+    })
+
+    revalidatePath(`/proyectos/${projectId}`)
+    return { success: true, department: { ...dept, tasks: [] } }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('permisos')) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'No se pudo crear el departamento.' }
+  }
+}
+
+export async function deleteProjectDepartment(projectId: string, departmentId: string) {
+  try {
+    await requireRole(['ADMIN', 'GERENTE'])
+    await prisma.projectDepartment.delete({
+      where: { id: departmentId }
+    })
+
+    const depts = await prisma.projectDepartment.findMany({ where: { projectId } })
+    const newProgress = depts.length === 0 ? 0 : Math.round(depts.reduce((s, d) => s + d.progress, 0) / depts.length)
+    await prisma.project.update({ where: { id: projectId }, data: { progress: newProgress } })
+
+    await logAudit({
+      action: 'DELETE_PROJECT_DEPARTMENT',
+      entity: 'Project',
+      entityId: projectId,
+      details: JSON.stringify({ departmentId })
+    })
+
+    revalidatePath(`/proyectos/${projectId}`)
+    return { success: true }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('permisos')) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'No se pudo eliminar el departamento.' }
+  }
+}
+
+

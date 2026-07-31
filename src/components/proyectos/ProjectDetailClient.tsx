@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useTransition, useRef } from 'react';
-import { updateProjectStatus, updateProjectBudget } from '@/app/actions/projects';
+import { updateProjectStatus, updateProjectBudget, addProjectDepartment, deleteProjectDepartment } from '@/app/actions/projects';
 import { addProjectNote } from '@/app/actions/projects';
 import { createTask, updateTask, deleteTask, addTaskMaterial, removeTaskMaterial, addTaskChecklistItem, removeTaskChecklistItem, toggleTaskChecklistItem } from '@/app/actions/tasks';
 import { addWorkLog, deleteWorkLog } from '@/app/actions/worklogs';
@@ -727,6 +727,12 @@ export default function ProjectDetailClient({ project, role, products = [] }: { 
   const [isDocumentModalOpen, setDocumentModalOpen] = useState(false);
   const [expandedDocs, setExpandedDocs] = useState<string[]>([]);
 
+  // Department Management
+  const [isAddDeptOpen, setIsAddDeptOpen] = useState(false);
+  const [newDeptName, setNewDeptName] = useState('');
+  const [deptError, setDeptError] = useState('');
+  const [addingDept, startAddingDept] = useTransition();
+
   const [notes, setNotes] = useState<ProjectNote[]>(project.notes || []);
   const [newNote, setNewNote] = useState('');
   const [addingNote, setAddingNote] = useState(false);
@@ -735,6 +741,50 @@ export default function ProjectDetailClient({ project, role, products = [] }: { 
     departments.length === 0
       ? 0
       : Math.round(departments.reduce((s, d) => s + d.progress, 0) / departments.length);
+
+  const handleAddDepartment = (deptNameToAdd?: string) => {
+    const nameToUse = (deptNameToAdd || newDeptName).trim();
+    if (!nameToUse) return;
+    setDeptError('');
+
+    const optimisticDept: ProjectDepartment = {
+      id: `tmp-${Date.now()}`,
+      name: nameToUse,
+      progress: 0,
+      status: 'NORMAL',
+      tasks: [],
+    };
+
+    setDepartments(prev => [...prev, optimisticDept]);
+    setActiveDeptId(optimisticDept.id);
+    setNewDeptName('');
+    setIsAddDeptOpen(false);
+
+    startAddingDept(async () => {
+      const res = await addProjectDepartment(project.id, nameToUse);
+      if (res.success && res.department) {
+        setDepartments(prev =>
+          prev.map(d => d.id === optimisticDept.id ? (res.department as ProjectDepartment) : d)
+        );
+        setActiveDeptId(res.department.id);
+      } else {
+        setDeptError(res.error || 'No se pudo crear el departamento');
+        setDepartments(prev => prev.filter(d => d.id !== optimisticDept.id));
+      }
+    });
+  };
+
+  const handleDeleteDepartment = (deptId: string, deptName: string) => {
+    if (!confirm(`¿Seguro que deseas eliminar el departamento "${deptName}" y sus tareas?`)) return;
+    setDepartments(prev => prev.filter(d => d.id !== deptId));
+    const remaining = departments.filter(d => d.id !== deptId);
+    if (activeDeptId === deptId && remaining.length > 0) {
+      setActiveDeptId(remaining[0].id);
+    }
+    startAddingDept(async () => {
+      await deleteProjectDepartment(project.id, deptId);
+    });
+  };
 
   const toggleDoc = (id: string) => {
     setExpandedDocs(prev => prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]);
@@ -1153,14 +1203,13 @@ export default function ProjectDetailClient({ project, role, products = [] }: { 
             </div>
           </div>
 
-          {/* Department Tabs */}
-          {departments.length > 0 && (
-            <div className="flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide">
-              {departments.map(dept => (
+          {/* Department Tabs Bar + Add Button */}
+          <div className="flex overflow-x-auto items-center gap-2 mb-6 pb-2 scrollbar-hide">
+            {departments.map(dept => (
+              <div key={dept.id} className="relative group shrink-0 flex items-center">
                 <button
-                  key={dept.id}
                   onClick={() => setActiveDeptId(dept.id)}
-                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap border shrink-0"
+                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap border"
                   style={
                     activeDeptId === dept.id
                       ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
@@ -1175,7 +1224,75 @@ export default function ProjectDetailClient({ project, role, products = [] }: { 
                     {dept.progress}%
                   </span>
                 </button>
-              ))}
+                {role !== 'TECNICO' && departments.length > 1 && (
+                  <button
+                    onClick={() => handleDeleteDepartment(dept.id, dept.name)}
+                    className="p-1.5 ml-1 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
+                    title={`Eliminar departamento ${dept.name}`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+
+            {role !== 'TECNICO' && (
+              <button
+                onClick={() => setIsAddDeptOpen(!isAddDeptOpen)}
+                className="px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 whitespace-nowrap border text-white shrink-0 ml-1"
+                style={{ background: 'var(--accent)', borderColor: 'var(--accent)' }}
+              >
+                <Plus className="w-4 h-4" />
+                Nuevo Departamento
+              </button>
+            )}
+          </div>
+
+          {/* Add Department Box */}
+          {isAddDeptOpen && (
+            <div className="p-4 rounded-xl border mb-6 space-y-3" style={{ background: 'var(--accent-subtle)', borderColor: 'var(--accent)' }}>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-white">Agregar Nuevo Departamento al Proyecto</h4>
+                <button onClick={() => setIsAddDeptOpen(false)} className="text-xs font-bold text-white/70 hover:text-white">✕</button>
+              </div>
+              <p className="text-xs text-white/80">Selecciona una sugerencia o escribe un departamento personalizado:</p>
+              <div className="flex flex-wrap gap-2">
+                {['HVAC', 'Diseño', 'Pintura', 'Automatización', 'Calidad', 'Logística', 'Plomería', 'Estructuras'].map(s => (
+                  <button
+                    key={s}
+                    onClick={() => handleAddDepartment(s)}
+                    className="px-3 py-1 rounded-lg text-xs font-bold border bg-black/30 hover:bg-accent text-white transition-colors"
+                  >
+                    + {s}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2 pt-2">
+                <input
+                  type="text"
+                  placeholder="O escribe otro departamento..."
+                  value={newDeptName}
+                  onChange={e => setNewDeptName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddDepartment()}
+                  style={inputFieldStyle}
+                />
+                <button
+                  onClick={() => handleAddDepartment()}
+                  disabled={!newDeptName.trim() || addingDept}
+                  className="px-4 py-2 rounded-lg text-xs font-bold text-white shrink-0"
+                  style={{ background: 'var(--accent)' }}
+                >
+                  Agregar
+                </button>
+                <button
+                  onClick={() => setIsAddDeptOpen(false)}
+                  className="px-3 py-2 rounded-lg text-xs font-bold shrink-0"
+                  style={{ background: 'var(--bg-surface-alt)', color: 'var(--text-muted)' }}
+                >
+                  Cancelar
+                </button>
+              </div>
+              {deptError && <p className="text-xs font-bold text-red-400">{deptError}</p>}
             </div>
           )}
 
