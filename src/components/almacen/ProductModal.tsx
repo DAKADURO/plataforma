@@ -5,7 +5,17 @@ import { createProduct } from '@/app/actions/almacen';
 import { getDepartments } from '@/app/actions/departments';
 import { X } from 'lucide-react';
 
-export default function ProductModal({ isOpen, onClose, departments: initialDepartments }: { isOpen: boolean; onClose: () => void, departments?: any[] }) {
+export default function ProductModal({
+  isOpen,
+  onClose,
+  departments: initialDepartments,
+  currentDepartment,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  departments?: any[];
+  currentDepartment?: string;
+}) {
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
@@ -17,19 +27,34 @@ export default function ProductModal({ isOpen, onClose, departments: initialDepa
   const [fetchedDepartments, setFetchedDepartments] = useState<any[]>(initialDepartments || []);
 
   useEffect(() => {
-    if (isOpen && !initialDepartments) {
-      getDepartments().then(res => {
-        if (res.success && res.departments) {
-          setFetchedDepartments(res.departments);
-          if (res.departments.length > 0) {
-            setDepartment(res.departments[0].name);
-          }
+    if (!isOpen) return;
+
+    const initDepts = async () => {
+      let depts = initialDepartments;
+      if (!depts) {
+        const res = await getDepartments();
+        if (res.success && res.departments) depts = res.departments;
+      }
+      depts = depts || [];
+
+      if (currentDepartment) {
+        const parent = depts.find((d: any) => d.name === currentDepartment);
+        let filtered = depts;
+        if (parent) {
+          filtered = depts.filter((d: any) => d.name === currentDepartment || d.parentId === parent.id);
         }
-      });
-    } else if (isOpen && initialDepartments && initialDepartments.length > 0) {
-      setDepartment(initialDepartments[0].name);
-    }
-  }, [isOpen, initialDepartments]);
+        setFetchedDepartments(filtered);
+        setDepartment(currentDepartment);
+      } else {
+        setFetchedDepartments(depts);
+        if (depts.length > 0) {
+          setDepartment(depts[0].name);
+        }
+      }
+    };
+
+    initDepts();
+  }, [isOpen, initialDepartments, currentDepartment]);
 
   if (!isOpen) return null;
 
@@ -45,7 +70,7 @@ export default function ProductModal({ isOpen, onClose, departments: initialDepa
       setSku('');
       setName('');
       setCategory('');
-      setDepartment('General');
+      setDepartment(currentDepartment || 'General');
       setItemType('Consumible');
       setMinStock(5);
       onClose();

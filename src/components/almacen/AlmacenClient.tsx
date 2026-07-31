@@ -286,7 +286,7 @@ export default function AlmacenClient({
           </div>
         )}
 
-        <ProductModal isOpen={isProductModalOpen} onClose={() => setProductModalOpen(false)} departments={departmentsDB || []} />
+        <ProductModal isOpen={isProductModalOpen} onClose={() => setProductModalOpen(false)} departments={departmentsDB || []} currentDepartment={currentDepartment} />
       </div>
     );
   }
@@ -599,7 +599,7 @@ export default function AlmacenClient({
         </div>
       </div>
 
-      <ProductModal isOpen={isProductModalOpen} onClose={() => setProductModalOpen(false)} departments={departmentsDB || []} />
+      <ProductModal isOpen={isProductModalOpen} onClose={() => setProductModalOpen(false)} departments={departmentsDB || []} currentDepartment={currentDepartment} />
       <MovementModal
         isOpen={movementState.isOpen}
         onClose={() => setMovementState({ isOpen: false })}
